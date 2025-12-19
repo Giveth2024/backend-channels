@@ -55,6 +55,16 @@
         </button>
     </div>
   </div>
+
+  <div id="instructions" style="margin-top: 15px; padding: 15px; background: #161b22; border-left: 4px solid #1f7aef; border-radius: 4px; font-size: 14px; line-height: 1.6;">
+  <h4 style="margin: 0 0 10px 0; color: #1f7aef;">📺 Quick Guide</h4>
+  <ul style="margin: 0; padding-left: 20px; color: #b1bac4;">
+    <li><b>Sound:</b> Tap the <b>Unmute</b> button to enable audio.</li>
+    <li><b>Buffering:</b> If it freezes, wait 5 seconds; it will <b>auto-refresh</b>.</li>
+    <li><b>Quality:</b> Use the dropdown if your internet is slow.</li>
+    <li><b>Ads:</b> The player may jump slightly during ad breaks—this is normal.</li>
+  </ul>
+</div>
   
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <script>
@@ -133,37 +143,46 @@
     // --- SMART RECOVERY HEARTBEAT ---
     let lastTime = -1;
     let stuckCounter = 0;
+    let loopCounter = 0;
 
     setInterval(() => {
-        // 1. Only run logic if hls is active and video isn't paused
         if (hls && !video.paused && video.readyState >= 2) {
-            
-            const livePosition = hls.liveSyncPosition; 
+            const livePos = hls.liveSyncPosition;
             const currentPos = video.currentTime;
 
-            // --- LIVE SYNC CHECK ---
-            // If we are more than 15s behind the live edge, jump forward
-            if (livePosition && (livePosition - currentPos > 15)) {
-                console.warn("Time jump detected! Syncing back to live edge...");
-                video.currentTime = livePosition;
-                return; // Exit this interval tick to let the seek happen
+            // 1. DETECT TIME JUMPING BACKWARDS (The Loop)
+            // If current time is suddenly LESS than it was a second ago
+            if (lastTime > 0 && currentPos < lastTime - 0.5) {
+                loopCounter++;
+                console.warn(`⚠️ Loop detected! Time jumped back. (${loopCounter}/3)`);
+                
+                // If it loops back 3 times, the buffer is poisoned. Refresh.
+                if (loopCounter >= 3) {
+                    console.error("Critical Loop. Refreshing...");
+                    window.location.reload();
+                }
+                
+                // Try to force it back to live immediately to break the loop
+                if (livePos) video.currentTime = livePos;
             }
 
-            // --- STUCK/STALL CHECK ---
-            if (video.currentTime === lastTime) {
+            // 2. DETECT "VIBRATING" STUCK (Stuck between 11:03 and 11:04)
+            // If the video hasn't moved forward by at least 0.2s in the last second
+            if (Math.abs(currentPos - lastTime) < 0.2) {
                 stuckCounter++;
-                console.warn(`Video seems stuck... (${stuckCounter}/5)`);
+                console.warn(`🐢 Video sluggish/stuck... (${stuckCounter}/6)`);
             } else {
-                stuckCounter = 0; // Reset if time is moving
+                stuckCounter = 0;
+                loopCounter = 0; // Reset loop counter if we are moving forward
             }
 
-            // If stuck for 5 seconds, reload the page
-            if (stuckCounter >= 5) {
-                console.error("Video stalled. Refreshing page for recovery...");
+            // 3. FINAL RECOVERY
+            if (stuckCounter >= 6) {
+                console.error("Video stalled too long. Refreshing...");
                 window.location.reload();
             }
-            
-            lastTime = video.currentTime;
+
+            lastTime = currentPos;
         }
     }, 1000);
     </script>

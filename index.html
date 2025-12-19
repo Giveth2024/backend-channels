@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>HLS Player With Quality Selector</title>
+  <style>
+    body {
+      background: #0b0f14;
+      color: #e6eef6;
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .container {
+      width: 95%;
+      max-width: 900px;
+    }
+    video {
+      width: 100%;
+      border-radius: 10px;
+      background: black;
+    }
+    .controls {
+      margin-top: 10px;
+      display: flex;
+      justify-content: space-between;
+    }
+    select {
+      padding: 6px 10px;
+      border-radius: 6px;
+      background: #071018;
+      color: #e6eef6;
+      border: 1px solid #1f7aef;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <video id="video" controls autoplay muted></video>
+
+    
+    <div class="controls">
+      <label>
+        Quality:
+        <select id="qualitySelect">
+          <option value="auto">Auto</option>
+        </select>
+      </label>
+      <button id="unmuteBtn" style="padding: 6px 15px; border-radius: 6px; background: #1f7aef; color: white; border: none; cursor: pointer;">
+    🔈 Unmute
+        </button>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <script>
+    const video = document.getElementById("video");
+    const qualitySelect = document.getElementById("qualitySelect");
+
+    // const hlsUrl =
+    //   "https://cfd-v4-service-channel-stitcher-use1-1.prd.pluto.tv/stitch/hls/channel/6675c7868768aa0008d7f1c7/master.m3u8?terminate=false&appName=web&appVersion=unknown&clientTime=0&deviceDNT=0&deviceId=d3595b5a-7553-4a6b-b9dd-c30951631395&deviceMake=Chrome&deviceModel=web&deviceType=web&deviceVersion=unknown&includeExtendedEvents=false&serverSideAds=false&sid=bc32713f-dc5f-45d9-8650-2b4e69506b23";
+
+      // Old URL
+const originalUrl = "https://cfd-v4-service-channel-stitcher-use1-1.prd.pluto.tv/stitch/hls/channel/6675c7868768aa0008d7f1c7/master.m3u8?terminate=false&appName=web&appVersion=unknown&clientTime=0&deviceDNT=0&deviceId=d3595b5a-7553-4a6b-b9dd-c30951631395&deviceMake=Chrome&deviceModel=web&deviceType=web&deviceVersion=unknown&includeExtendedEvents=false&serverSideAds=false&sid=bc32713f-dc5f-45d9-8650-2b4e69506b23";
+
+// New URL pointing to your Express server
+const hlsUrl = `http://localhost:3000/proxy?url=${encodeURIComponent(originalUrl)}`;
+
+    let hls;
+
+    if (Hls.isSupported()) {
+      hls = new Hls();
+      hls.loadSource(hlsUrl);
+      hls.attachMedia(video);
+
+      // When manifest is loaded → Populate quality list
+      hls.on(Hls.Events.MANIFEST_PARSED, function (event, data) {
+          if (data.fatal) {
+              console.log("Fatal error detected. Refreshing in 5 seconds...");
+              setTimeout(() => {
+                  window.location.reload();
+              }, 5000);
+          }
+
+        const levels = hls.levels;
+
+        // Add available quality levels
+        levels.forEach((level, index) => {
+          let opt = document.createElement("option");
+          opt.value = index;
+          opt.textContent = level.height
+            ? `${level.height}p`
+            : `Level ${index}`;
+          qualitySelect.appendChild(opt);
+        });
+      });
+
+      // When user selects quality
+      qualitySelect.addEventListener("change", () => {
+        const value = qualitySelect.value;
+
+        if (value === "auto") {
+          hls.currentLevel = -1; // auto
+          console.log("Quality set to AUTO");
+        } else {
+          hls.currentLevel = parseInt(value); // manual
+          console.log("Quality set to:", hls.currentLevel);
+        }
+      });
+
+    } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+      video.src = hlsUrl;
+    }
+
+    const unmuteBtn = document.getElementById("unmuteBtn");
+
+    function toggleMute() {
+    if (video.muted) {
+        video.muted = false;
+        unmuteBtn.textContent = "🔊 Mute";
+    } else {
+        video.muted = true;
+        unmuteBtn.textContent = "🔈 Unmute";
+    }
+    }
+
+    // Attach the listener
+    unmuteBtn.addEventListener("click", toggleMute);
+
+    // --- SMART RECOVERY HEARTBEAT ---
+let lastTime = -1;
+let stuckCounter = 0;
+
+setInterval(() => {
+  if (!video.paused) {
+    // If the video time hasn't moved since the last check
+    if (video.currentTime === lastTime) {
+      stuckCounter++;
+      console.warn(`Video seems stuck... (${stuckCounter}/5)`);
+    } else {
+      stuckCounter = 0; // Reset if it's moving
+    }
+
+    // If stuck for 5 checks (approx 5 seconds)
+    if (stuckCounter >= 5) {
+      console.error("Video stalled at discontinuity. Refreshing...");
+      window.location.reload();
+    }
+    
+    lastTime = video.currentTime;
+  }
+}, 1000); // Check every 1 second
+    </script>
+</body>
+</html>

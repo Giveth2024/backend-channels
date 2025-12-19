@@ -61,14 +61,13 @@
     const video = document.getElementById("video");
     const qualitySelect = document.getElementById("qualitySelect");
 
-    // const hlsUrl =
-    //   "https://cfd-v4-service-channel-stitcher-use1-1.prd.pluto.tv/stitch/hls/channel/6675c7868768aa0008d7f1c7/master.m3u8?terminate=false&appName=web&appVersion=unknown&clientTime=0&deviceDNT=0&deviceId=d3595b5a-7553-4a6b-b9dd-c30951631395&deviceMake=Chrome&deviceModel=web&deviceType=web&deviceVersion=unknown&includeExtendedEvents=false&serverSideAds=false&sid=bc32713f-dc5f-45d9-8650-2b4e69506b23";
+    // This automatically detects if it's localhost or your Render URL
+    const API_BASE = window.location.origin;
+        // Old URL
+    const originalUrl = "https://cfd-v4-service-channel-stitcher-use1-1.prd.pluto.tv/stitch/hls/channel/6675c7868768aa0008d7f1c7/master.m3u8?terminate=false&appName=web&appVersion=unknown&clientTime=0&deviceDNT=0&deviceId=d3595b5a-7553-4a6b-b9dd-c30951631395&deviceMake=Chrome&deviceModel=web&deviceType=web&deviceVersion=unknown&includeExtendedEvents=false&serverSideAds=false&sid=bc32713f-dc5f-45d9-8650-2b4e69506b23";
 
-      // Old URL
-const originalUrl = "https://cfd-v4-service-channel-stitcher-use1-1.prd.pluto.tv/stitch/hls/channel/6675c7868768aa0008d7f1c7/master.m3u8?terminate=false&appName=web&appVersion=unknown&clientTime=0&deviceDNT=0&deviceId=d3595b5a-7553-4a6b-b9dd-c30951631395&deviceMake=Chrome&deviceModel=web&deviceType=web&deviceVersion=unknown&includeExtendedEvents=false&serverSideAds=false&sid=bc32713f-dc5f-45d9-8650-2b4e69506b23";
-
-// New URL pointing to your Express server
-const hlsUrl = `http://localhost:3000/proxy?url=${encodeURIComponent(originalUrl)}`;
+    // New URL pointing to your Express server
+    const hlsUrl = `${API_BASE}/proxy?url=${encodeURIComponent(originalUrl)}`;
 
     let hls;
 
@@ -132,28 +131,41 @@ const hlsUrl = `http://localhost:3000/proxy?url=${encodeURIComponent(originalUrl
     unmuteBtn.addEventListener("click", toggleMute);
 
     // --- SMART RECOVERY HEARTBEAT ---
-let lastTime = -1;
-let stuckCounter = 0;
+    let lastTime = -1;
+    let stuckCounter = 0;
 
-setInterval(() => {
-  if (!video.paused) {
-    // If the video time hasn't moved since the last check
-    if (video.currentTime === lastTime) {
-      stuckCounter++;
-      console.warn(`Video seems stuck... (${stuckCounter}/5)`);
-    } else {
-      stuckCounter = 0; // Reset if it's moving
-    }
+    setInterval(() => {
+        // 1. Only run logic if hls is active and video isn't paused
+        if (hls && !video.paused && video.readyState >= 2) {
+            
+            const livePosition = hls.liveSyncPosition; 
+            const currentPos = video.currentTime;
 
-    // If stuck for 5 checks (approx 5 seconds)
-    if (stuckCounter >= 5) {
-      console.error("Video stalled at discontinuity. Refreshing...");
-      window.location.reload();
-    }
-    
-    lastTime = video.currentTime;
-  }
-}, 1000); // Check every 1 second
+            // --- LIVE SYNC CHECK ---
+            // If we are more than 15s behind the live edge, jump forward
+            if (livePosition && (livePosition - currentPos > 15)) {
+                console.warn("Time jump detected! Syncing back to live edge...");
+                video.currentTime = livePosition;
+                return; // Exit this interval tick to let the seek happen
+            }
+
+            // --- STUCK/STALL CHECK ---
+            if (video.currentTime === lastTime) {
+                stuckCounter++;
+                console.warn(`Video seems stuck... (${stuckCounter}/5)`);
+            } else {
+                stuckCounter = 0; // Reset if time is moving
+            }
+
+            // If stuck for 5 seconds, reload the page
+            if (stuckCounter >= 5) {
+                console.error("Video stalled. Refreshing page for recovery...");
+                window.location.reload();
+            }
+            
+            lastTime = video.currentTime;
+        }
+    }, 1000);
     </script>
 </body>
 </html>

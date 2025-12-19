@@ -38,7 +38,7 @@ app.get('/proxy', async (req, res) => {
                 // Construct the full Pluto URL for this segment/playlist
                 const fullUrl = `${baseUrl}/${line.trim()}`;
                 // Route it through our proxy again
-                return `http://localhost:${PORT}/proxy?url=${encodeURIComponent(fullUrl)}`;
+                return `https://backend-channels-5al8.onrender.com/proxy?url=${encodeURIComponent(fullUrl)}`;
             }
             return line;
         }).join('\n');

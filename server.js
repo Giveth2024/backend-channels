@@ -21,13 +21,14 @@ app.get('/proxy', async (req, res) => {
     const streamUrl = req.query.url;
     if (!streamUrl) return res.status(400).send("No URL provided");
 
-    //Dynamically get the url
     const protocol = req.protocol;
     const host = req.get('host');
     const proxyBase = `${protocol}://${host}`;
 
     try {
         const response = await axios.get(streamUrl, {
+            // Use arraybuffer so video segments (.ts) aren't corrupted
+            responseType: 'arraybuffer', 
             headers: {
                 'Origin': 'https://pluto.tv',
                 'Referer': 'https://pluto.tv',
@@ -35,25 +36,39 @@ app.get('/proxy', async (req, res) => {
             }
         });
 
-        let manifestData = response.data;
-
-        // 1. Find the base URL of the Pluto TV stream (everything before the last /)
         const baseUrl = streamUrl.substring(0, streamUrl.lastIndexOf('/'));
+        
+        // Only rewrite if it's an HLS playlist (.m3u8)
+        if (streamUrl.includes('.m3u8')) {
+            let manifestData = response.data.toString('utf-8');
 
-        // 2. Rewrite relative URLs to point back to our proxy
-        // This regex finds lines that don't start with '#' (comments/tags) and aren't absolute URLs
-        const rewrittenManifest = manifestData.split('\n').map(line => {
-            if (line.trim() && !line.startsWith('#') && !line.startsWith('http')) {
-                // Construct the full Pluto URL for this segment/playlist
-                const fullUrl = `${baseUrl}/${line.trim()}`;
-                // Route it through our proxy again
-                return `${proxyBase}/proxy?url=${encodeURIComponent(fullUrl)}`;
-            }
-            return line;
-        }).join('\n');
+            const rewrittenManifest = manifestData.split('\n').map(line => {
+                const trimmed = line.trim();
+                if (!trimmed) return line;
 
-        res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
-        res.send(rewrittenManifest);
+                // A. Rewrite standard relative links (Segments/Playlists)
+                if (!trimmed.startsWith('#') && !trimmed.startsWith('http')) {
+                    const fullUrl = `${baseUrl}/${trimmed}`;
+                    return `${proxyBase}/proxy?url=${encodeURIComponent(fullUrl)}`;
+                }
+
+                // B. NEW: Rewrite Subtitle/Audio URIs inside tags
+                if (trimmed.includes('URI="') && !trimmed.includes('URI="http')) {
+                    return trimmed.replace(/URI="([^"]+)"/g, (match, p1) => {
+                        const fullUrl = `${baseUrl}/${p1}`;
+                        return `URI="${proxyBase}/proxy?url=${encodeURIComponent(fullUrl)}"`;
+                    });
+                }
+                return line;
+            }).join('\n');
+
+            res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
+            return res.send(rewrittenManifest);
+        }
+
+        // C. If it's a .ts or .vtt file, just send the raw data
+        res.send(response.data);
+
     } catch (error) {
         console.error("Proxy Error:", error.message);
         res.status(500).send("Error fetching the stream");

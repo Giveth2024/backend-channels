@@ -23,7 +23,7 @@ app.get('/proxy', async (req, res) => {
 
     const protocol = req.protocol;
     const host = req.get('host');
-    const proxyBase = `${protocol}://${host}`;
+    const proxyBase = `${protocol}s://${host}`;
 
     try {
         const response = await axios.get(streamUrl, {

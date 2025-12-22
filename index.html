@@ -69,139 +69,141 @@
   
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <script>
-    const video = document.getElementById("video");
-    const qualitySelect = document.getElementById("qualitySelect");
+      const video = document.getElementById("video");
+      const qualitySelect = document.getElementById("qualitySelect");
+      const API_BASE = window.location.origin;
 
-    // This automatically detects if it's localhost or your Render URL
-    const API_BASE = window.location.origin;
-        // Old URL
-    const originalUrl = "https://cfd-v4-service-channel-stitcher-use1-1.prd.pluto.tv/stitch/hls/channel/6675c7868768aa0008d7f1c7/master.m3u8?terminate=false&appName=web&appVersion=unknown&clientTime=0&deviceDNT=0&deviceId=d3595b5a-7553-4a6b-b9dd-c30951631395&deviceMake=Chrome&deviceModel=web&deviceType=web&deviceVersion=unknown&includeExtendedEvents=false&serverSideAds=false&sid=bc32713f-dc5f-45d9-8650-2b4e69506b23";
+      const originalUrl = "https://cfd-v4-service-channel-stitcher-use1-1.prd.pluto.tv/stitch/hls/channel/6675c7868768aa0008d7f1c7/master.m3u8?terminate=false&appName=web&appVersion=unknown&clientTime=0&deviceDNT=0&deviceId=d3595b5a-7553-4a6b-b9dd-c30951631395&deviceMake=Chrome&deviceModel=web&deviceType=web&deviceVersion=unknown&includeExtendedEvents=false&serverSideAds=false&sid=bc32713f-dc5f-45d9-8650-2b4e69506b23";
+      const hlsUrl = `${API_BASE}/proxy?url=${encodeURIComponent(originalUrl)}`;
 
-    // New URL pointing to your Express server
-    const hlsUrl = `${API_BASE}/proxy?url=${encodeURIComponent(originalUrl)}`;
+      let hls;
 
-    let hls;
+      // --- THE NUCLEAR OPTION (Clears all browser memory for this site) ---
+      async function nukeAndReload() {
+          console.warn("🚀 10s STALL: Performing Full Data Nuke & Reload...");
+          
+          // 1. Clear Standard Storage
+          localStorage.clear();
+          sessionStorage.clear();
 
-    if (Hls.isSupported()) {
-      hls = new Hls({
-        liveSyncDurationCount: 3,    // Keep 3 segments (approx 15s) behind live edge for stability
-        maxStarvationDelay: 1,      // Don't wait long if buffer is empty
-        nudgeOffset: 0.1,           // Small nudge if stuck
-        nudgeMaxRetry: 5,           // Try nudging 5 times before giving up
-        enableWorker: true          // Use web worker for smoother processing
-      });
-      hls.loadSource(hlsUrl);
-      hls.attachMedia(video);
-
-      // When manifest is loaded → Populate quality list
-      hls.on(Hls.Events.MANIFEST_PARSED, function (event, data) {
-          if (data.fatal) {
-              console.log("Fatal error detected. Refreshing in 5 seconds...");
-              setTimeout(() => {
-                  window.location.reload();
-              }, 5000);
+          // 2. Clear All Cookies
+          const cookies = document.cookie.split(";");
+          for (let i = 0; i < cookies.length; i++) {
+              const cookie = cookies[i];
+              const eqPos = cookie.indexOf("=");
+              const name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie;
+              document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
           }
 
-        const levels = hls.levels;
+          // 3. Clear Cache Storage (The most important part for HLS)
+          if ('caches' in window) {
+              const cacheNames = await caches.keys();
+              await Promise.all(cacheNames.map(name => caches.delete(name)));
+          }
 
-        // Add available quality levels
-        levels.forEach((level, index) => {
-          let opt = document.createElement("option");
-          opt.value = index;
-          opt.textContent = level.height
-            ? `${level.height}p`
-            : `Level ${index}`;
-          qualitySelect.appendChild(opt);
-        });
+          // 4. Clear IndexedDB
+          if (window.indexedDB && window.indexedDB.databases) {
+              const dbs = await window.indexedDB.databases();
+              dbs.forEach(db => window.indexedDB.deleteDatabase(db.name));
+          }
+
+          // 5. Final Reload
+          window.location.reload();
+      }
+
+      // --- INTERNAL NUDGE (Stage 1 Recovery) ---
+      function forceRecover() {
+          console.warn("🛠️ Stage 1: Flushing buffer and nudging playhead...");
+          const currentTime = video.currentTime;
+          hls.stopLoad(); 
+          video.currentTime = currentTime + 0.1;
+          hls.startLoad();
+      }
+
+      if (Hls.isSupported()) {
+          hls = new Hls({
+              liveSyncDurationCount: 3,
+              maxStarvationDelay: 1,
+              nudgeOffset: 0.1,
+              nudgeMaxRetry: 5,
+              enableWorker: true,
+              lowLatencyMode: true
+          });
+
+          hls.loadSource(hlsUrl);
+          hls.attachMedia(video);
+
+          hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
+              qualitySelect.innerHTML = '<option value="auto">Auto</option>';
+              hls.levels.forEach((level, index) => {
+                  let opt = document.createElement("option");
+                  opt.value = index;
+                  opt.textContent = level.height ? `${level.height}p` : `Level ${index}`;
+                  qualitySelect.appendChild(opt);
+              });
+          });
+
+          hls.on(Hls.Events.ERROR, (event, data) => {
+              if (data.fatal) {
+                  if (data.type === Hls.ErrorTypes.NETWORK_ERROR) hls.startLoad();
+                  else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) hls.recoverMediaError();
+                  else nukeAndReload(); // Fatal unknown error triggers the nuke
+              }
+          });
+
+          qualitySelect.addEventListener("change", () => {
+              const value = qualitySelect.value;
+              hls.currentLevel = (value === "auto") ? -1 : parseInt(value);
+          });
+
+      } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+          video.src = hlsUrl;
+      }
+
+      // Unmute Button Logic
+      const unmuteBtn = document.getElementById("unmuteBtn");
+      unmuteBtn.addEventListener("click", () => {
+          video.muted = !video.muted;
+          unmuteBtn.textContent = video.muted ? "🔈 Unmute" : "🔊 Mute";
       });
 
-      // When user selects quality
-      qualitySelect.addEventListener("change", () => {
-        const value = qualitySelect.value;
+      // --- AGGRESSIVE HEARTBEAT ---
+      let lastTime = -1;
+      let stuckCounter = 0;
 
-        if (value === "auto") {
-          hls.currentLevel = -1; // auto
-          console.log("Quality set to AUTO");
-        } else {
-          hls.currentLevel = parseInt(value); // manual
-          console.log("Quality set to:", hls.currentLevel);
-        }
-      });
+      setInterval(() => {
+          if (hls && !video.paused && video.readyState >= 2) {
+              const currentPos = video.currentTime;
 
-    } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-      video.src = hlsUrl;
-    }
+              // 1. Detect Stalling
+              if (lastTime > 0 && Math.abs(currentPos - lastTime) < 0.2) {
+                  stuckCounter++;
+                  console.warn(`🐢 Stall Counter: ${stuckCounter}/10`);
+              } else {
+                  stuckCounter = 0;
+              }
 
-    const unmuteBtn = document.getElementById("unmuteBtn");
+              // 2. Loop Detection
+              if (lastTime > 0 && currentPos < lastTime - 0.5) {
+                  console.error("🔄 Loop detected!");
+                  nukeAndReload();
+                  return;
+              }
 
-    function toggleMute() {
-    if (video.muted) {
-        video.muted = false;
-        unmuteBtn.textContent = "🔊 Mute";
-    } else {
-        video.muted = true;
-        unmuteBtn.textContent = "🔈 Unmute";
-    }
-    }
+              // 3. Multi-Stage Recovery
+              if (stuckCounter === 5) {
+                  // First try the light nudge
+                  forceRecover();
+              } 
+              else if (stuckCounter >= 10) {
+                  // If still stuck 5 seconds after the nudge, nuke the storage
+                  nukeAndReload();
+              }
 
-    // Attach the listener
-    unmuteBtn.addEventListener("click", toggleMute);
+              lastTime = currentPos;
+          }
+      }, 1000);
+  </script>
 
-    // --- SMART RECOVERY HEARTBEAT ---
-    let lastTime = -1;
-    let stuckCounter = 0;
-    let loopCounter = 0;
-
-    setInterval(() => {
-        // Only check if video is meant to be playing and is ready
-        if (hls && !video.paused && video.readyState >= 2) {
-            const currentPos = video.currentTime;
-
-            // 1. INSTANT RELOAD ON JUMP BACK (The Loop)
-            // If current time is suddenly LESS than it was a second ago by more than 0.5s
-            if (lastTime > 0 && currentPos < lastTime - 0.5) {
-                console.error("Critical Jump Back detected. Reloading player...");
-                window.location.reload(); 
-                return; // Exit interval
-            }
-
-            // 2. DETECT STALL (Video not moving)
-            if (Math.abs(currentPos - lastTime) < 0.2) {
-                stuckCounter++;
-                console.warn(`🐢 Stall detected... (${stuckCounter}/6)`);
-            } else {
-                stuckCounter = 0;
-            }
-
-            // 3. RECOVER FROM STALL
-            if (stuckCounter >= 6) {
-                const livePos = hls.liveSyncPosition;
-                
-                // Check if we are already at the live edge
-                const distanceToLive = livePos ? Math.abs(video.currentTime - livePos) : 0;
-
-                if (distanceToLive < 1) {
-                    // CASE A: Stuck at the very edge. Nudge backward to try and kickstart the buffer.
-                    console.warn("Stuck at live edge. Nudging back 2 seconds...");
-                    video.currentTime = video.currentTime - 2;
-                    stuckCounter = 0; 
-                } 
-                else if (livePos && distanceToLive > 3) {
-                    // CASE B: We are behind live. Jump to the edge.
-                    console.log("Stuck behind live. Jumping to edge...");
-                    video.currentTime = livePos;
-                    stuckCounter = 0;
-                } 
-                else {
-                    // CASE C: Truly dead. Hard reload.
-                    console.error("Hard stall. Refreshing page...");
-                    window.location.reload();
-                }
-            }
-
-            lastTime = currentPos;
-        }
-    }, 1000);
-    </script>
 </body>
 </html>

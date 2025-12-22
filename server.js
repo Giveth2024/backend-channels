@@ -27,18 +27,24 @@ app.get('/proxy', async (req, res) => {
 
     try {
         const response = await axios.get(streamUrl, {
-            // Use arraybuffer so video segments (.ts) aren't corrupted
             responseType: 'arraybuffer', 
+            timeout: 10000, // 10s timeout to prevent hanging
             headers: {
                 'Origin': 'https://pluto.tv',
                 'Referer': 'https://pluto.tv',
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                'Connection': 'close', // 1. CRITICAL: Prevents ECONNRESET by closing connection after each request
+                'Accept': '*/*'
             }
         });
 
+        // 2. CRITICAL: Stop the browser/proxy from caching old keys/playlists
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+
         const baseUrl = streamUrl.substring(0, streamUrl.lastIndexOf('/'));
         
-        // Only rewrite if it's an HLS playlist (.m3u8)
         if (streamUrl.includes('.m3u8')) {
             let manifestData = response.data.toString('utf-8');
 
@@ -46,16 +52,20 @@ app.get('/proxy', async (req, res) => {
                 const trimmed = line.trim();
                 if (!trimmed) return line;
 
-                // A. Rewrite standard relative links (Segments/Playlists)
-                if (!trimmed.startsWith('#') && !trimmed.startsWith('http')) {
-                    const fullUrl = `${baseUrl}/${trimmed}`;
-                    return `${proxyBase}/proxy?url=${encodeURIComponent(fullUrl)}`;
+                const getFullUrl = (path) => {
+                    if (path.startsWith('http')) return path;
+                    return `${baseUrl}/${path}`;
+                };
+
+                // Rewrite Video Segments
+                if (!trimmed.startsWith('#')) {
+                    return `${proxyBase}/proxy?url=${encodeURIComponent(getFullUrl(trimmed))}`;
                 }
 
-                // B. NEW: Rewrite Subtitle/Audio URIs inside tags
-                if (trimmed.includes('URI="') && !trimmed.includes('URI="http')) {
+                // Rewrite Keys and Subtitles
+                if (trimmed.includes('URI="')) {
                     return trimmed.replace(/URI="([^"]+)"/g, (match, p1) => {
-                        const fullUrl = `${baseUrl}/${p1}`;
+                        const fullUrl = getFullUrl(p1);
                         return `URI="${proxyBase}/proxy?url=${encodeURIComponent(fullUrl)}"`;
                     });
                 }
@@ -66,15 +76,23 @@ app.get('/proxy', async (req, res) => {
             return res.send(rewrittenManifest);
         }
 
-        // C. If it's a .ts or .vtt file, just send the raw data
-        res.send(response.data);
+        // 3. Handle Binary Files (Keys and .ts segments)
+        if (streamUrl.includes('.key')) {
+            res.setHeader('Content-Type', 'application/octet-stream');
+        } else if (streamUrl.includes('.ts')) {
+            res.setHeader('Content-Type', 'video/MP2T');
+        }
+
+        return res.send(response.data);
 
     } catch (error) {
-        console.error("Proxy Error:", error.message);
-        res.status(500).send("Error fetching the stream");
+        // Log more detail for debugging
+        console.error(`Proxy Error on ${streamUrl.substring(0, 50)}... :`, error.message);
+        
+        // If it was a timeout or reset, tell the player to try again
+        res.status(502).send("Upstream error or reset");
     }
 });
-
 app.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);
 });

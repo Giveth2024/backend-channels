@@ -13,9 +13,18 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
+app.get('/server', (req, res) => {
+    res.json("Server is running");
+});
+
 app.get('/proxy', async (req, res) => {
     const streamUrl = req.query.url;
     if (!streamUrl) return res.status(400).send("No URL provided");
+
+    //Dynamically get the url
+    const protocol = req.protocol;
+    const host = req.get('host');
+    const proxyBase = `${protocol}://${host}`;
 
     try {
         const response = await axios.get(streamUrl, {
@@ -38,7 +47,7 @@ app.get('/proxy', async (req, res) => {
                 // Construct the full Pluto URL for this segment/playlist
                 const fullUrl = `${baseUrl}/${line.trim()}`;
                 // Route it through our proxy again
-                return `https://backend-channels-5al8.onrender.com/proxy?url=${encodeURIComponent(fullUrl)}`;
+                return `${proxyBase}/proxy?url=${encodeURIComponent(fullUrl)}`;
             }
             return line;
         }).join('\n');

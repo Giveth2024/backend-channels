@@ -61,7 +61,7 @@
   <h4 style="margin: 0 0 10px 0; color: #1f7aef;">📺 Quick Guide</h4>
   <ul style="margin: 0; padding-left: 20px; color: #b1bac4;">
     <li><b>Sound:</b> Tap the <b>Unmute</b> button to enable audio.</li>
-    <li><b>Buffering:</b> If it freezes, wait 5 seconds; it will <b>auto-refresh</b>.</li>
+    <li><b>Buffering:</b> If it freezes, wait 5 - 15 seconds; it will <b>auto-refresh</b>.</li>
     <li><b>Quality:</b> Use the dropdown if your internet is slow.</li>
     <li><b>Ads:</b> The player may jump slightly during ad breaks—this is normal.</li>
   </ul>
@@ -83,7 +83,13 @@
     let hls;
 
     if (Hls.isSupported()) {
-      hls = new Hls();
+      hls = new Hls({
+        liveSyncDurationCount: 3,    // Keep 3 segments (approx 15s) behind live edge for stability
+        maxStarvationDelay: 1,      // Don't wait long if buffer is empty
+        nudgeOffset: 0.1,           // Small nudge if stuck
+        nudgeMaxRetry: 5,           // Try nudging 5 times before giving up
+        enableWorker: true          // Use web worker for smoother processing
+      });
       hls.loadSource(hlsUrl);
       hls.attachMedia(video);
 
@@ -147,40 +153,50 @@
     let loopCounter = 0;
 
     setInterval(() => {
+        // Only check if video is meant to be playing and is ready
         if (hls && !video.paused && video.readyState >= 2) {
-            const livePos = hls.liveSyncPosition;
             const currentPos = video.currentTime;
 
-            // 1. DETECT TIME JUMPING BACKWARDS (The Loop)
-            // If current time is suddenly LESS than it was a second ago
+            // 1. INSTANT RELOAD ON JUMP BACK (The Loop)
+            // If current time is suddenly LESS than it was a second ago by more than 0.5s
             if (lastTime > 0 && currentPos < lastTime - 0.5) {
-                loopCounter++;
-                console.warn(`⚠️ Loop detected! Time jumped back. (${loopCounter}/3)`);
-                
-                // If it loops back 3 times, the buffer is poisoned. Refresh.
-                if (loopCounter >= 3) {
-                    console.error("Critical Loop. Refreshing...");
-                    window.location.reload();
-                }
-                
-                // Try to force it back to live immediately to break the loop
-                if (livePos) video.currentTime = livePos;
+                console.error("Critical Jump Back detected. Reloading player...");
+                window.location.reload(); 
+                return; // Exit interval
             }
 
-            // 2. DETECT "VIBRATING" STUCK (Stuck between 11:03 and 11:04)
-            // If the video hasn't moved forward by at least 0.2s in the last second
+            // 2. DETECT STALL (Video not moving)
             if (Math.abs(currentPos - lastTime) < 0.2) {
                 stuckCounter++;
-                console.warn(`🐢 Video sluggish/stuck... (${stuckCounter}/6)`);
+                console.warn(`🐢 Stall detected... (${stuckCounter}/6)`);
             } else {
                 stuckCounter = 0;
-                loopCounter = 0; // Reset loop counter if we are moving forward
             }
 
-            // 3. FINAL RECOVERY
+            // 3. RECOVER FROM STALL
             if (stuckCounter >= 6) {
-                console.error("Video stalled too long. Refreshing...");
-                window.location.reload();
+                const livePos = hls.liveSyncPosition;
+                
+                // Check if we are already at the live edge
+                const distanceToLive = livePos ? Math.abs(video.currentTime - livePos) : 0;
+
+                if (distanceToLive < 1) {
+                    // CASE A: Stuck at the very edge. Nudge backward to try and kickstart the buffer.
+                    console.warn("Stuck at live edge. Nudging back 2 seconds...");
+                    video.currentTime = video.currentTime - 2;
+                    stuckCounter = 0; 
+                } 
+                else if (livePos && distanceToLive > 3) {
+                    // CASE B: We are behind live. Jump to the edge.
+                    console.log("Stuck behind live. Jumping to edge...");
+                    video.currentTime = livePos;
+                    stuckCounter = 0;
+                } 
+                else {
+                    // CASE C: Truly dead. Hard reload.
+                    console.error("Hard stall. Refreshing page...");
+                    window.location.reload();
+                }
             }
 
             lastTime = currentPos;

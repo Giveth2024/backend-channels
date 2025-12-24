@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Tom & Jerry HLS Full Preload</title>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+</head>
+<body style="background:#000;color:#fff;text-align:center">
+
+<h1>Tom & Jerry – Full Preload HLS</h1>
+<video id="video" controls autoplay muted width="800"></video>
+
+<script>
+const video = document.getElementById('video');
+const masterPlaylist = 'http://localhost:3000/hls/master.m3u8';
+
+// In-memory TS cache
+const tsCache = new Map();
+
+async function fetchAllSegments(urls) {
+  for (const url of urls) {
+    if (!tsCache.has(url)) {
+      try {
+        const resp = await fetch(url);
+        const buffer = await resp.arrayBuffer();
+        tsCache.set(url, buffer);
+        console.log('⚡ Cached', url);
+      } catch (err) {
+        console.warn('Failed to preload', url, err);
+      }
+    }
+  }
+}
+
+function parseMediaPlaylist(data) {
+  const lines = data.split('\n');
+  const tsUrls = lines.filter(line => line && !line.startsWith('#'));
+  return tsUrls.map(f => f.startsWith('/hls/') ? f : `/hls/${f}`);
+}
+
+if (Hls.isSupported()) {
+  const hls = new Hls();
+
+  // Override loader to use memory cache
+  hls.config.loader = class MyLoader extends Hls.DefaultConfig.loader {
+    load(context, config, callbacks) {
+      const url = context.url;
+      if (tsCache.has(url)) {
+        callbacks.onSuccess({ data: tsCache.get(url) }, context);
+      } else {
+        super.load(context, config, callbacks);
+      }
+    }
+  };
+
+  hls.loadSource(masterPlaylist);
+  hls.attachMedia(video);
+
+  hls.on(Hls.Events.MANIFEST_PARSED, async () => {
+    try {
+    //   const mediaResp = await fetch('http://localhost:3000/hls/media.m3u8');
+      const mediaResp = await fetch('https://backend-channels-5al8.onrender.com/hls/media.m3u8');
+      const playlistText = await mediaResp.text();
+      const allSegments = parseMediaPlaylist(playlistText);
+
+      console.log('📦 Preloading all future segments:', allSegments.length);
+      fetchAllSegments(allSegments); // async preload
+    } catch (err) {
+      console.error('Failed to fetch media playlist', err);
+    }
+  });
+
+} else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+  video.src = masterPlaylist;
+}
+</script>
+
+</body>
+</html>

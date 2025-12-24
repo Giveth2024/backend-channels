@@ -8,6 +8,8 @@ const PORT = 3000;
 
 app.use(cors());
 
+app.use('/images', express.static(path.join(__dirname, 'images')));
+
 // Serve index.html
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
@@ -237,6 +239,7 @@ app.get('/hls/segment.ts', async (req, res) => {
     res.sendStatus(502);
   }
 });
+
 app.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);
 });

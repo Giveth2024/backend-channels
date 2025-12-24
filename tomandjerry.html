@@ -1,80 +1,237 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Tom & Jerry HLS Full Preload</title>
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="shortcut icon" href="./images/tomjerry.jpg" type="image/x-icon">
+    <title>Tom & Jerry – Live</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
+    <style>
+        :root {
+        --bg: #0c0a09;
+        --card: #1c1917cc;
+        --border: #292524;
+        --amber: #fbbf24;
+        --text: #f5f5f4;
+        --muted: #a8a29e;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+        margin: 0;
+        font-family: system-ui, -apple-system, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        }
+
+        .container {
+        max-width: 1280px;
+        margin: auto;
+        padding: 1rem;
+        }
+
+        .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 1.5rem;
+        padding: 1.5rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2rem;
+        }
+
+        .poster {
+        width: 260px;
+        height: 260px;
+        border-radius: 1rem;
+        overflow: hidden;
+        border: 2px solid rgba(251,191,36,.3);
+        box-shadow: 0 0 30px rgba(251,191,36,.1);
+        }
+
+        .poster img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        padding: 1rem;
+        }
+
+        .info {
+        flex: 1;
+        min-width: 280px;
+        }
+
+        .title {
+        font-size: clamp(2.5rem, 5vw, 3.5rem);
+        font-weight: 900;
+        color: var(--amber);
+        }
+
+        .genre {
+        color: var(--muted);
+        margin-top: .25rem;
+        }
+
+        .plot {
+        margin-top: 1rem;
+        padding-left: 1rem;
+        border-left: 4px solid var(--amber);
+        background: rgba(41,37,36,.3);
+        }
+
+        .meta {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: .75rem;
+        margin-top: 1rem;
+        }
+
+        .meta div {
+        background: #292524cc;
+        padding: .75rem;
+        border-radius: .75rem;
+        border: 1px solid var(--border);
+        }
+
+        .video-wrap {
+        margin-top: 2rem;
+        position: relative;
+        border-radius: 1.5rem;
+        overflow: hidden;
+        border: 1px solid var(--border);
+        }
+
+        video {
+        width: 100%;
+        height: auto;
+        background: #000;
+        }
+
+        .controls {
+        display: flex;
+        justify-content: flex-end;
+        gap: .5rem;
+        padding: .75rem;
+        background: #000;
+        }
+
+        select {
+        background: #1c1917;
+        color: #fff;
+        border: 1px solid var(--border);
+        padding: .4rem .6rem;
+        border-radius: .5rem;
+        }
+
+    .back {
+        margin-bottom: 1rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 42px;
+        height: 42px;
+        text-decoration: none;
+        background: #fbbf24;
+        color: black;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        font-size: 1.2rem;
+        transition: all 0.2s ease;
+        backdrop-filter: blur(8px);
+    }
+
+    .back:hover {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: #fbbf24; /* Or your theme color */
+        color: #fbbf24;
+        transform: translateX(-3px);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    }
+    </style>
 </head>
-<body style="background:#000;color:#fff;text-align:center">
 
-<h1>Tom & Jerry – Full Preload HLS</h1>
-<video id="video" controls autoplay muted width="800"></video>
+<body>
 
-<script>
-const video = document.getElementById('video');
-// const masterPlaylist = 'http://localhost:3000/hls/master.m3u8';
-const masterPlaylist = 'https://backend-channels-5al8.onrender.com/hls/master.m3u8';
+    <div class="container">
+    <a href="https://giveth-station.vercel.app/tv" title="Back to Tv Page" class="back">&larr;</a>
+    <div class="card">
+        <div class="poster">
+        <img src="./images/tomjerry.jpg" alt="Tom & Jerry">
+        </div>
 
-// In-memory TS cache
-const tsCache = new Map();
+        <div class="info">
+        <div class="title">Tom & Jerry</div>
+        <div class="genre">Animation • Comedy • Kids</div>
 
-async function fetchAllSegments(urls) {
-  for (const url of urls) {
-    if (!tsCache.has(url)) {
-      try {
-        const resp = await fetch(url);
-        const buffer = await resp.arrayBuffer();
-        tsCache.set(url, buffer);
-        console.log('⚡ Cached', url);
-      } catch (err) {
-        console.warn('Failed to preload', url, err);
-      }
+        <div class="plot">
+            Enjoy 24/7 non-stop slapstick comedy with the world’s most famous cat-and-mouse duo.
+        </div>
+
+        <div class="meta">
+            <div><small>Quality</small><br><b>HD</b></div>
+            <div><small>Status</small><br><b style="color:#4ade80">LIVE</b></div>
+            <div><small>Network</small><br><b>BOZZ TV</b></div>
+            <div><small>Language</small><br><b>English</b></div>
+        </div>
+        </div>
+    </div>
+
+    <div class="video-wrap">
+        <div class="controls">
+        <select id="quality">
+            <option value="-1">Auto</option>
+        </select>
+        </div>
+        <video id="video" controls autoplay muted playsinline></video>
+    </div>
+
+    </div>
+
+    <script>
+    const video = document.getElementById('video');
+    const qualitySelect = document.getElementById('quality');
+    const masterPlaylist = 'https://backend-channels-5al8.onrender.com/hls/master.m3u8';
+
+    const tsCache = new Map();
+
+    if (Hls.isSupported()) {
+    const hls = new Hls();
+
+    hls.config.loader = class extends Hls.DefaultConfig.loader {
+        load(context, config, callbacks) {
+        if (tsCache.has(context.url)) {
+            callbacks.onSuccess({ data: tsCache.get(context.url) }, context);
+        } else {
+            super.load(context, config, callbacks);
+        }
+        }
+    };
+
+    hls.loadSource(masterPlaylist);
+    hls.attachMedia(video);
+
+    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        qualitySelect.innerHTML = '<option value="-1">Auto</option>';
+
+        hls.levels.forEach((level, i) => {
+        const opt = document.createElement('option');
+        opt.value = i;
+        opt.text = `${level.height}p`;
+        qualitySelect.appendChild(opt);
+        });
+    });
+
+    qualitySelect.addEventListener('change', () => {
+        hls.currentLevel = parseInt(qualitySelect.value, 10);
+    });
+
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+    video.src = masterPlaylist;
     }
-  }
-}
-
-function parseMediaPlaylist(data) {
-  const lines = data.split('\n');
-  const tsUrls = lines.filter(line => line && !line.startsWith('#'));
-  return tsUrls.map(f => f.startsWith('/hls/') ? f : `/hls/${f}`);
-}
-
-if (Hls.isSupported()) {
-  const hls = new Hls();
-
-  // Override loader to use memory cache
-  hls.config.loader = class MyLoader extends Hls.DefaultConfig.loader {
-    load(context, config, callbacks) {
-      const url = context.url;
-      if (tsCache.has(url)) {
-        callbacks.onSuccess({ data: tsCache.get(url) }, context);
-      } else {
-        super.load(context, config, callbacks);
-      }
-    }
-  };
-
-  hls.loadSource(masterPlaylist);
-  hls.attachMedia(video);
-
-  hls.on(Hls.Events.MANIFEST_PARSED, async () => {
-    try {
-    //   const mediaResp = await fetch('http://localhost:3000/hls/media.m3u8');
-      const mediaResp = await fetch('https://backend-channels-5al8.onrender.com/hls/media.m3u8');
-      const playlistText = await mediaResp.text();
-      const allSegments = parseMediaPlaylist(playlistText);
-
-      console.log('📦 Preloading all future segments:', allSegments.length);
-      fetchAllSegments(allSegments); // async preload
-    } catch (err) {
-      console.error('Failed to fetch media playlist', err);
-    }
-  });
-
-} else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-  video.src = masterPlaylist;
-}
-</script>
+    </script>
 
 </body>
 </html>

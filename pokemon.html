@@ -223,7 +223,7 @@
                 <h2 class="title">Pokémon TV</h2>
                 <div class="genre">Adventure • Action • Fantasy</div>
                 <div class="plot">
-                    Streaming 24/7. This player features a Discontinuity Guard and a 40s Watchdog to ensure the live stream never stalls or loses audio sync.
+                    Experience the world of Pokémon like never before with 24/7 non-stop streaming dedicated to the journey of a lifetime. Follow Ash Ketchum and his iconic partner Pikachu as they travel across diverse regions, from the classic forests of Kanto to the tropical islands of Alola, in their quest to become the very best. Whether you are revisiting legendary gym battles or discovering heartwarming new friendships, Pokémon TV brings you the ultimate collection of adventures, action-packed tournaments, and the unforgettable bond of Ash and his team as they face every challenge head-on.
                 </div>
                 <div class="meta">
                     <div><small>Status</small><b id="current-status" style="color:#4ade80">IDLE</b></div>
@@ -371,8 +371,8 @@
             const curr = video.currentTime;
             timeEl.innerText = curr.toFixed(1) + "s";
 
-            if (curr > 40) {
-                addLog("40s LIMIT: Snapping to live edge", "warn");
+            if (curr > 540) {
+                addLog("540s LIMIT: Snapping to live edge", "warn");
                 hardResetPlayer();
                 return;
             }

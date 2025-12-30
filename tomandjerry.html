@@ -194,25 +194,89 @@
     const video = document.getElementById('video');
     const qualitySelect = document.getElementById('quality');
     const masterPlaylist = 'https://backend-channels-5al8.onrender.com/hls/master.m3u8';
+    const serverPingEndpoint = 'https://backend-channels-5al8.onrender.com/server';
 
-    const tsCache = new Map();
+    /* ======================================================
+    FRONTEND TS CACHE (IN-MEMORY)
+    ====================================================== */
+    const tsCache = new Map(); // url -> ArrayBuffer
 
+    /* ======================================================
+    SERVER KEEP-ALIVE (EVERY 15 SECONDS)
+    ====================================================== */
+    function keepServerAlive() {
+    fetch(serverPingEndpoint).catch(() => {});
+    }
+    setInterval(keepServerAlive, 15000);
+    keepServerAlive();
+
+    /* ======================================================
+    HLS SETUP
+    ====================================================== */
     if (Hls.isSupported()) {
-    const hls = new Hls();
+    const hls = new Hls({
+        maxBufferLength: 60 * 60,        // buffer up to 1 hour
+        maxMaxBufferLength: 60 * 60 * 4, // allow very large future buffer
+        backBufferLength: 0,             // don't drop past buffer
+        enableWorker: true,
+        lowLatencyMode: false,
+    });
 
+    /* ======================================================
+        CUSTOM LOADER WITH AGGRESSIVE TS CACHING
+    ====================================================== */
     hls.config.loader = class extends Hls.DefaultConfig.loader {
         load(context, config, callbacks) {
-        if (tsCache.has(context.url)) {
-            callbacks.onSuccess({ data: tsCache.get(context.url) }, context);
-        } else {
-            super.load(context, config, callbacks);
+        // Serve TS from cache if available
+        if (context.type === 'fragment' && tsCache.has(context.url)) {
+            callbacks.onSuccess(
+            { data: tsCache.get(context.url) },
+            context,
+            null
+            );
+            return;
         }
+
+        // Fetch normally
+        super.load(context, config, {
+            onSuccess: (response, ctx, stats) => {
+            // Cache TS fragments permanently for this session
+            if (ctx.type === 'fragment' && response?.data) {
+                tsCache.set(ctx.url, response.data);
+            }
+            callbacks.onSuccess(response, ctx, stats);
+            },
+            onError: callbacks.onError,
+            onTimeout: callbacks.onTimeout,
+            onProgress: callbacks.onProgress,
+        });
         }
     };
 
     hls.loadSource(masterPlaylist);
     hls.attachMedia(video);
 
+    /* ======================================================
+        FORCE LOADING ALL FUTURE SEGMENTS
+    ====================================================== */
+    hls.on(Hls.Events.LEVEL_LOADED, (event, data) => {
+        const details = data.details;
+        if (!details || !details.fragments) return;
+
+        details.fragments.forEach(frag => {
+        const url = frag.url;
+        if (!tsCache.has(url)) {
+            fetch(url)
+            .then(r => r.arrayBuffer())
+            .then(buf => tsCache.set(url, buf))
+            .catch(() => {});
+        }
+        });
+    });
+
+    /* ======================================================
+        QUALITY SELECT (UNCHANGED)
+    ====================================================== */
     hls.on(Hls.Events.MANIFEST_PARSED, () => {
         qualitySelect.innerHTML = '<option value="-1">Auto</option>';
 

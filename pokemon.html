@@ -1,70 +1,390 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Pokemon Proxy Player</title>
+    <meta charset="UTF-8">
+    <title>Pokemon TV | Fixed Audio Sync</title>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <style>
+        :root {
+            --bg: #0a101e;
+            --card: #161d2fcc;
+            --border: #232d45;
+            --pokemon-yellow: #ffcb05; 
+            --pokemon-blue: #3d7dca;   
+            --text: #f5f5f4;
+            --muted: #94a3b8;
+            --terminal-green: #00ff41;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: auto;
+            padding: 2rem 1rem;
+        }
+
+        /* Back Button */
+        .back {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 42px;
+            height: 42px;
+            text-decoration: none;
+            background: #fbbf24;
+            color: black;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            font-size: 1.2rem;
+            transition: all 0.2s ease;
+            margin-bottom: 1.5rem;
+        }
+
+        .back:hover {
+            transform: translateX(-3px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            filter: brightness(1.1);
+        }
+
+        /* Header Card */
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 1.5rem;
+            padding: 1.5rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2rem;
+            backdrop-filter: blur(10px);
+            margin-bottom: 2rem;
+        }
+
+        .poster {
+            width: 240px;
+            height: 240px;
+            border-radius: 1rem;
+            overflow: hidden;
+            border: 2px solid rgba(255, 203, 5, 0.3);
+            background: #000;
+        }
+
+        .poster img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            padding: 1rem;
+        }
+
+        .info-pane { flex: 1; min-width: 280px; }
+
+        .title {
+            font-size: clamp(2rem, 5vw, 3rem);
+            font-weight: 900;
+            color: var(--pokemon-yellow);
+            text-transform: uppercase;
+            margin: 0;
+        }
+
+        .genre { color: var(--muted); margin-top: .25rem; font-weight: 500; }
+
+        .plot {
+            margin-top: 1rem;
+            padding: 1rem;
+            border-left: 4px solid var(--pokemon-blue);
+            background: rgba(35, 45, 69, 0.5);
+            border-radius: 0 0.75rem 0.75rem 0;
+        }
+
+        /* Status Grid */
+        .meta {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: .75rem;
+            margin-top: 1.5rem;
+        }
+
+        .meta div {
+            background: rgba(15, 23, 42, 0.6);
+            padding: .75rem;
+            border-radius: .75rem;
+            border: 1px solid var(--border);
+        }
+
+        .meta small {
+            color: var(--muted);
+            text-transform: uppercase;
+            font-size: 0.65rem;
+            letter-spacing: 1px;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .highlight { color: var(--pokemon-yellow); }
+
+        /* Video Section */
+        #video-container {
+            border-radius: 1.5rem;
+            overflow: hidden;
+            border: 2px solid var(--border);
+            background: #000;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        }
+
+        video { width: 100%; display: block; }
+
+        /* Player Controls */
+        .controls {
+            margin-top: 1rem;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        button {
+            background: #1e293b;
+            color: #fff;
+            border: 1px solid var(--border);
+            padding: 0.8rem 1.5rem;
+            border-radius: 0.75rem;
+            cursor: pointer;
+            font-weight: bold;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            background: var(--pokemon-blue);
+            border-color: transparent;
+            transform: translateY(-2px);
+        }
+
+        #audio-toggle { background: var(--pokemon-blue); border: none; }
+
+        /* Logs Section */
+        #logs {
+            margin-top: 1.5rem;
+            height: 120px;
+            overflow-y: auto;
+            background: #000;
+            padding: 1rem;
+            border-radius: 1rem;
+            border: 1px solid var(--border);
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            color: var(--terminal-green);
+        }
+
+        #overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(10, 16, 30, 0.98);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            text-align: center;
+        }
+
+        .warn { color: #ffcc00; } .error { color: #ff3e3e; } .info { color: #00bfff; }
+
+        @media (max-width: 600px) {
+            .poster { width: 100%; height: auto; }
+        }
+    </style>
 </head>
-<body style="background:#000; margin:0; display:flex; flex-direction:column; align-items:center;">
-    <video id="video" controls style="width:80%; margin-top:50px;"></video>
-    <div id="logs" style="color:#0f0; font-family:monospace; font-size:12px; margin-top:20px; text-align:left; width:80%;"></div>
+<body>
 
+ <div id="overlay" onclick="launchStream()">
+        <h1 style="color: var(--pokemon-yellow); font-size: 3rem; margin: 0;">POKÉMON TV</h1>
+        <p style="color: #fff; letter-spacing: 2px;">[ CLICK TO INITIALIZE GUARD ]</p>
+    </div>
+
+    <div class="container">
+        <a href="https://giveth-station.vercel.app/tv" class="back">&larr;</a>
+        
+        <div class="card">
+            <div class="poster">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/9/98/International_Pok%C3%A9mon_logo.svg" alt="Pokémon Logo">
+            </div>
+            <div class="info-pane">
+                <h2 class="title">Pokémon TV</h2>
+                <div class="genre">Adventure • Action • Fantasy</div>
+                <div class="plot">
+                    Streaming 24/7. This player features a Discontinuity Guard and a 40s Watchdog to ensure the live stream never stalls or loses audio sync.
+                </div>
+                <div class="meta">
+                    <div><small>Status</small><b id="current-status" style="color:#4ade80">IDLE</b></div>
+                    <div><small>Disc Seq</small><b id="disc-val" class="highlight">0</b></div>
+                    <div><small>Uptime</small><b id="time-val" class="highlight">0.0s</b></div>
+                    <div><small>Resets</small><b id="reset-count">0</b></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="video-container">
+            <video id="video" controls autoplay playsinline muted></video>
+        </div>
+
+        <div class="controls">
+            <button id="audio-toggle" onclick="manualMuteToggle()">🔊 AUDIO ON/OFF</button>
+            <button onclick="hardResetPlayer()">🔄 FORCE RESET</button>
+            <button onclick="toggleFullScreen()">🖥️ FULLSCREEN</button>
+        </div>
+
+        <div id="logs"></div>
+    </div>
     <script>
-        const video = document.getElementById('video');
+        const videoContainer = document.getElementById('video-container');
+        let video = document.getElementById('video');
+        const statusEl = document.getElementById('current-status');
+        const discEl = document.getElementById('disc-val');
+        const timeEl = document.getElementById('time-val');
+        const resetEl = document.getElementById('reset-count');
         const logBox = document.getElementById('logs');
-                const plutoUrl = "https://cfd-v4-service-channel-stitcher-use1-1.prd.pluto.tv/stitch/hls/channel/6675c7868768aa0008d7f1c7/master.m3u8?terminate=false&appName=web&appVersion=unknown&clientTime=0&deviceDNT=0&deviceId=d3595b5a-7553-4a6b-b9dd-c30951631395&deviceMake=Chrome&deviceModel=web&deviceType=web&deviceVersion=unknown&includeExtendedEvents=false&serverSideAds=false&sid=bc32713f-dc5f-45d9-8650-2b4e69506b23";
 
-        if (Hls.isSupported()) {
-            const hls = new Hls({
-                // 1. STALL PREVENTION: If the player gets stuck, jump forward automatically
+        const plutoUrl = "https://cfd-v4-service-channel-stitcher-use1-1.prd.pluto.tv/stitch/hls/channel/6675c7868768aa0008d7f1c7/master.m3u8?terminate=false&appName=web&appVersion=unknown&clientTime=0&deviceDNT=0&deviceId=d3595b5a-7553-4a6b-b9dd-c30951631395&deviceMake=Chrome&deviceModel=web&deviceType=web&deviceVersion=unknown&includeExtendedEvents=false&serverSideAds=false&sid=bc32713f-dc5f-45d9-8650-2b4e69506b23";
+        
+        let hls = null;
+        let resets = 0;
+        let hasInteracted = false;
+        let lastDiscSeq = -1;
+        let lastAudioState = false; // Tracks if user wanted audio on
+
+        function addLog(msg, type = 'success') {
+            const div = document.createElement('div');
+            div.className = type;
+            div.innerText = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            logBox.prepend(div);
+            if(logBox.childNodes.length > 50) logBox.removeChild(logBox.lastChild);
+        }
+
+        function launchStream() {
+            hasInteracted = true;
+            lastAudioState = true; // Assume audio on after first click
+            document.getElementById('overlay').style.display = 'none';
+            initPlayer();
+        }
+
+        function initPlayer() {
+            if (hls) hls.destroy();
+
+            hls = new Hls({
                 enableWorker: true,
-                lowLatencyMode: false, // Better stability for proxied streams
-                backBufferLength: 60,   // Keep some history for stability
-                
-                // 2. AGGRESSIVE ERROR RECOVERY
-                manifestLoadingMaxRetry: 20,
-                levelLoadingMaxRetry: 20,
-                fragLoadingMaxRetry: 20,
-                
-                // 3. THE "FORCE" SETTINGS
-                // This skips over missing segments/holes larger than 0.5s
-                maxSeekHole: 2, 
-                maxBufferHole: 0.5,
-                maxFragLookUpTolerance: 0.1,
-                
-                // 4. SYNC FOR LIVE
-                liveSyncDurationCount: 3, // Start 3 segments behind live for buffer safety
+                liveSyncDurationCount: 6,
+                maxBufferHole: 2,
+                manifestLoadingMaxRetry: Infinity,
+                enableSoftwareAES: true // Better compatibility for some ad-streams
             });
 
-            hls.loadSource(`http://localhost:3000/pokemon/master?url=${encodeURIComponent(plutoUrl)}`);
+            const proxySrc = `http://localhost:3000/pokemon/master?url=${encodeURIComponent(plutoUrl)}`;
+            
+            // Start muted to satisfy browser autoplay policy
+            video.muted = true;
+            
+            hls.loadSource(proxySrc);
             hls.attachMedia(video);
 
-            // EMERGENCY RECOVERY LOGIC
-            hls.on(Hls.Events.ERROR, function (event, data) {
-                if (data.fatal) {
-                    switch (data.type) {
-                        case Hls.ErrorTypes.NETWORK_ERROR:
-                            addLog("Network error, retrying...");
-                            hls.startLoad();
-                            break;
-                        case Hls.ErrorTypes.MEDIA_ERROR:
-                            addLog("Media error, attempting recovery...");
-                            hls.recoverMediaError(); // Jumps the stall
-                            break;
-                        default:
-                            addLog("Unrecoverable error. Reloading...");
-                            hls.destroy();
-                            location.reload();
-                            break;
-                    }
-                } else if (data.details === 'bufferStalledError') {
-                    // Force a small nudge forward if the buffer stalls
-                    video.currentTime += 0.1;
-                    addLog("Buffer stalled - nudging playhead...");
+            hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                statusEl.innerText = "MONITORING_ACTIVE";
+                video.play().catch(() => addLog("Play blocked by browser", "warn"));
+            });
+
+            // FIXED AUDIO SYNC LOGIC
+            video.oncanplay = () => {
+                if (hasInteracted && lastAudioState) {
+                    video.muted = false;
+                    video.volume = 1.0;
+                    addLog("Audio Engine Synchronized", "info");
+                }
+            };
+
+            hls.on(Hls.Events.LEVEL_LOADED, (event, data) => {
+                const currentDiscSeq = data.details.fragments[0].cc; 
+                discEl.innerText = currentDiscSeq;
+                if (lastDiscSeq !== -1 && lastDiscSeq !== currentDiscSeq) {
+                    addLog(`TIMELINE SHIFT: CC ${currentDiscSeq}`, "warn");
+                    lastDiscSeq = currentDiscSeq;
+                    hardResetPlayer();
+                } else {
+                    lastDiscSeq = currentDiscSeq;
                 }
             });
 
-            hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
+            hls.on(Hls.Events.ERROR, (event, data) => {
+                if (data.fatal) hardResetPlayer();
+            });
         }
+
+        function manualMuteToggle() {
+            video.muted = !video.muted;
+            lastAudioState = !video.muted;
+            addLog(`Audio Manual: ${video.muted ? 'OFF' : 'ON'}`, "info");
+        }
+
+        function hardResetPlayer() {
+            resets++;
+            resetEl.innerText = resets;
+            
+            // Save state
+            const wasFullscreen = !!document.fullscreenElement;
+            
+            const newVideo = document.createElement('video');
+            newVideo.id = 'video';
+            newVideo.controls = true;
+            newVideo.autoplay = true;
+            newVideo.playsInline = true;
+            
+            // Ensure audio state carries over correctly
+            newVideo.muted = true; 
+            
+            videoContainer.innerHTML = '';
+            videoContainer.appendChild(newVideo);
+            video = newVideo;
+
+            initPlayer();
+            addLog("HARD RESET: Re-aligning Audio/Video Clock", "info");
+        }
+
+        function toggleFullScreen() {
+            if (!document.fullscreenElement) videoContainer.requestFullscreen();
+            else document.exitFullscreen();
+        }
+
+        let lastTime = -1;
+        let stallCount = 0;
+
+        setInterval(() => {
+            if (video.paused || !hasInteracted) return;
+            const curr = video.currentTime;
+            timeEl.innerText = curr.toFixed(1) + "s";
+
+            if (curr > 40) {
+                addLog("40s LIMIT: Snapping to live edge", "warn");
+                hardResetPlayer();
+                return;
+            }
+
+            if (curr === lastTime && video.readyState >= 2) {
+                stallCount++;
+                if (stallCount > 10) { 
+                    hardResetPlayer();
+                    stallCount = 0;
+                }
+            } else { stallCount = 0; }
+            lastTime = curr;
+        }, 500);
     </script>
 </body>
 </html>

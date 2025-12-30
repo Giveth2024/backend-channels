@@ -45,21 +45,34 @@ router.get('/playlist', async (req, res) => {
         let content = response.data;
         const baseUrl = url.substring(0, url.lastIndexOf('/') + 1);
 
-        // FIX: Strip DISCONTINUITY and rewrite TS/KEY links
-        content = content.replace(/#EXT-X-DISCONTINUITY\n/g, ''); // Removes the tag that causes sticking
+        // 1. DONT strip #EXT-X-DISCONTINUITY. The player NEEDS it to switch 
+        // between the Pokemon key and the Ad key.
         
-        // Match both Keys and TS segments
-        const rewritten = content.replace(/URI="(.+?)"|^(?!#)(.+)$/gm, (match, keyUri, tsLine) => {
-            const rawLink = keyUri || tsLine;
-            const absolute = rawLink.startsWith('http') ? rawLink : new URL(rawLink, baseUrl).href;
+        const rewritten = content.split('\n').map(line => {
+            const trimmed = line.trim();
             
-            // If it's a segment or key, we proxy it to our decryptor
-            return keyUri ? `URI="http://localhost:3000/pokemon/decrypt?url=${encodeURIComponent(absolute)}"` 
-                          : `http://localhost:3000/pokemon/decrypt?url=${encodeURIComponent(absolute)}`;
-        });
+            // Handle Key lines
+            if (trimmed.startsWith('#EXT-X-KEY')) {
+                return trimmed.replace(/URI="(.+?)"/, (m, uri) => {
+                    const abs = uri.startsWith('http') ? uri : new URL(uri, baseUrl).href;
+                    return `URI="http://localhost:3000/pokemon/decrypt?url=${encodeURIComponent(abs)}"`;
+                });
+            }
 
+            // Handle TS Segment lines
+            if (trimmed && !trimmed.startsWith('#')) {
+                const abs = trimmed.startsWith('http') ? trimmed : new URL(trimmed, baseUrl).href;
+                return `http://localhost:3000/pokemon/decrypt?url=${encodeURIComponent(abs)}`;
+            }
+
+            return line;
+        }).join('\n');
+
+        res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
         res.send(rewritten);
-    } catch (e) { res.status(500).send("Playlist fetch failed"); }
+    } catch (e) {
+        res.status(500).send("Playlist Error");
+    }
 });
 
 // Endpoint 3: Server-side Decryptor

@@ -29,7 +29,7 @@ router.get('/master', async (req, res) => {
         // Rewrite variants to point to our playlist proxy
         const rewritten = response.data.replace(/^(?!#)(.+)$/gm, (line) => {
             const absolute = line.startsWith('http') ? line : new URL(line, baseUrl).href;
-            return `http://localhost:3000/pokemon/playlist?url=${encodeURIComponent(absolute)}`;
+            return `https://backend-channels-5al8.onrender.com/pokemon/playlist?url=${encodeURIComponent(absolute)}`;
         });
 
         res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
@@ -55,14 +55,14 @@ router.get('/playlist', async (req, res) => {
             if (trimmed.startsWith('#EXT-X-KEY')) {
                 return trimmed.replace(/URI="(.+?)"/, (m, uri) => {
                     const abs = uri.startsWith('http') ? uri : new URL(uri, baseUrl).href;
-                    return `URI="http://localhost:3000/pokemon/decrypt?url=${encodeURIComponent(abs)}"`;
+                    return `URI="https://backend-channels-5al8.onrender.com/pokemon/decrypt?url=${encodeURIComponent(abs)}"`;
                 });
             }
 
             // Handle TS Segment lines
             if (trimmed && !trimmed.startsWith('#')) {
                 const abs = trimmed.startsWith('http') ? trimmed : new URL(trimmed, baseUrl).href;
-                return `http://localhost:3000/pokemon/decrypt?url=${encodeURIComponent(abs)}`;
+                return `https://backend-channels-5al8.onrender.com/pokemon/decrypt?url=${encodeURIComponent(abs)}`;
             }
 
             return line;

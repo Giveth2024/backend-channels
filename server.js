@@ -12,11 +12,7 @@ app.use(cors());
 
 app.use('/images', express.static(path.join(__dirname, 'images')));
 
-// Serve index.html
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
-});
-
+//Pages
 app.get('/tomandjerry', (req, res) => {
     res.sendFile(path.join(__dirname, 'tomandjerry.html'));
 });

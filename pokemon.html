@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Pokemon TV | Fixed Audio Sync</title>
+    <link rel="shortcut icon" href="./images/Pokemon-Logo.jpg" type="image/x-icon">
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <style>
         :root {
@@ -216,7 +217,7 @@
         
         <div class="card">
             <div class="poster">
-                <img src="https://upload.wikimedia.org/wikipedia/commons/9/98/International_Pok%C3%A9mon_logo.svg" alt="Pokémon Logo">
+                <img src="./images/Pokemon-Logo.jpg" alt="Pokémon Logo">
             </div>
             <div class="info-pane">
                 <h2 class="title">Pokémon TV</h2>
@@ -288,7 +289,7 @@
                 enableSoftwareAES: true // Better compatibility for some ad-streams
             });
 
-            const proxySrc = `http://localhost:3000/pokemon/master?url=${encodeURIComponent(plutoUrl)}`;
+            const proxySrc = `https://backend-channels-5al8.onrender.com/pokemon/master?url=${encodeURIComponent(plutoUrl)}`;
             
             // Start muted to satisfy browser autoplay policy
             video.muted = true;

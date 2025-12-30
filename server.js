@@ -3,6 +3,8 @@ const axios = require('axios');
 const cors = require('cors');
 const path = require('path');
 
+const pokemonRoute = require('./routes/pokemonRoute');
+
 const app = express();
 const PORT = 3000;
 
@@ -239,6 +241,10 @@ app.get('/hls/segment.ts', async (req, res) => {
     res.sendStatus(502);
   }
 });
+
+// Pokemon route
+app.use('/pokemon', pokemonRoute);
+
 
 app.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);

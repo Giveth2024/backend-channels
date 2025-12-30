@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Pokemon Proxy Player</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+</head>
+<body style="background:#000; margin:0; display:flex; flex-direction:column; align-items:center;">
+    <video id="video" controls style="width:80%; margin-top:50px;"></video>
+    <div id="logs" style="color:#0f0; font-family:monospace; font-size:12px; margin-top:20px; text-align:left; width:80%;"></div>
+
+    <script>
+        const video = document.getElementById('video');
+        const logBox = document.getElementById('logs');
+                const plutoUrl = "https://cfd-v4-service-channel-stitcher-use1-1.prd.pluto.tv/stitch/hls/channel/6675c7868768aa0008d7f1c7/master.m3u8?terminate=false&appName=web&appVersion=unknown&clientTime=0&deviceDNT=0&deviceId=d3595b5a-7553-4a6b-b9dd-c30951631395&deviceMake=Chrome&deviceModel=web&deviceType=web&deviceVersion=unknown&includeExtendedEvents=false&serverSideAds=false&sid=bc32713f-dc5f-45d9-8650-2b4e69506b23";
+
+        if (Hls.isSupported()) {
+            const hls = new Hls({
+                // 1. STALL PREVENTION: If the player gets stuck, jump forward automatically
+                enableWorker: true,
+                lowLatencyMode: false, // Better stability for proxied streams
+                backBufferLength: 60,   // Keep some history for stability
+                
+                // 2. AGGRESSIVE ERROR RECOVERY
+                manifestLoadingMaxRetry: 20,
+                levelLoadingMaxRetry: 20,
+                fragLoadingMaxRetry: 20,
+                
+                // 3. THE "FORCE" SETTINGS
+                // This skips over missing segments/holes larger than 0.5s
+                maxSeekHole: 2, 
+                maxBufferHole: 0.5,
+                maxFragLookUpTolerance: 0.1,
+                
+                // 4. SYNC FOR LIVE
+                liveSyncDurationCount: 3, // Start 3 segments behind live for buffer safety
+            });
+
+            hls.loadSource(`http://localhost:3000/pokemon/master?url=${encodeURIComponent(plutoUrl)}`);
+            hls.attachMedia(video);
+
+            // EMERGENCY RECOVERY LOGIC
+            hls.on(Hls.Events.ERROR, function (event, data) {
+                if (data.fatal) {
+                    switch (data.type) {
+                        case Hls.ErrorTypes.NETWORK_ERROR:
+                            addLog("Network error, retrying...");
+                            hls.startLoad();
+                            break;
+                        case Hls.ErrorTypes.MEDIA_ERROR:
+                            addLog("Media error, attempting recovery...");
+                            hls.recoverMediaError(); // Jumps the stall
+                            break;
+                        default:
+                            addLog("Unrecoverable error. Reloading...");
+                            hls.destroy();
+                            location.reload();
+                            break;
+                    }
+                } else if (data.details === 'bufferStalledError') {
+                    // Force a small nudge forward if the buffer stalls
+                    video.currentTime += 0.1;
+                    addLog("Buffer stalled - nudging playhead...");
+                }
+            });
+
+            hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
+        }
+    </script>
+</body>
+</html>

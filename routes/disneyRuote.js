@@ -50,6 +50,16 @@ router.get('/disney/start', (req, res) => {
     startMonitor();
     res.json({ status: 'started' });
 });
+
+/* ============================
+   FRONTEND PING
+============================ */
+router.get('/disney/ping', (req, res) => {
+  lastPing = Date.now();
+  res.json({ status: 'alive' });
+});
+
+
 /* ============================
    STOP STREAM
 ============================ */

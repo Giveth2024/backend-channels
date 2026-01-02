@@ -1,0 +1,9 @@
+ffmpeg -fflags +genpts -i https://fl31.moveonjoy.com/DISNEY/index.m3u8 ^
+-map 0:v -map 0:a ^
+-c:v copy ^
+-c:a aac -b:a 128k -ac 2 ^
+-f hls ^
+-hls_time 4 ^
+-hls_list_size 10 ^
+-hls_flags delete_segments+append_list ^
+output.m3u8

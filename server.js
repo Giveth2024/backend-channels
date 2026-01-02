@@ -4,17 +4,28 @@ const cors = require('cors');
 const path = require('path');
 
 const pokemonRoute = require('./routes/pokemonRoute');
+const disneyRoute = require('./routes/disneyRuote');
 
 const app = express();
 const PORT = 3000;
 
 app.use(cors());
 
+app.disable('x-powered-by');
+
 app.use('/images', express.static(path.join(__dirname, 'images')));
+app.use(
+  '/hls',
+  express.static(path.join(__dirname, 'output'))
+);
 
 //Pages
 app.get('/tomandjerry', (req, res) => {
     res.sendFile(path.join(__dirname, 'tomandjerry.html'));
+});
+
+app.get('/disney', (req, res) => {
+    res.sendFile(path.join(__dirname, 'disney.html'));
 });
 
 app.get('/server', (req, res) => {
@@ -240,6 +251,9 @@ app.get('/hls/segment.ts', async (req, res) => {
 
 // Pokemon route
 app.use('/pokemon', pokemonRoute);
+
+// Disney route
+app.use('/api', disneyRoute);
 
 
 app.listen(PORT, () => {

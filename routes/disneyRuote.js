@@ -1,8 +1,9 @@
 const express = require('express');
 const { spawn } = require('child_process');
-const router = express.Router();
 const path = require('path');
 const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
+
+const router = express.Router();
 
 let ffmpegProcess = null;
 let lastPing = Date.now();
@@ -18,8 +19,7 @@ router.get('/disney/start', (req, res) => {
     return res.json({ status: 'already_running' });
   }
 
-  // Spawn ffmpeg using ffmpeg-static
-  ffmpegProcess = spawn(ffmpegPath, [
+  ffmpegProcess = spawn(ffmpegPath, [ // use ffmpegPath here
     '-fflags', '+genpts',
     '-i', 'https://fl31.moveonjoy.com/DISNEY/index.m3u8',
     '-map', '0:v',
@@ -34,19 +34,20 @@ router.get('/disney/start', (req, res) => {
     '-hls_flags', 'delete_segments+append_list',
     'output.m3u8'
   ], {
-    cwd: path.join(__dirname, '..', 'output') // your output folder
+    cwd: path.join(__dirname, '..', 'output')
   });
 
-  ffmpegProcess.stderr.on('data', data => {
-    console.log(`FFMPEG: ${data.toString()}`);
+  ffmpegProcess.stderr.on('data', (data) => {
+    console.log('ffmpeg:', data.toString());
   });
 
-  ffmpegProcess.on('close', () => {
-    stopStream();
+  ffmpegProcess.on('close', stopStream);
+  ffmpegProcess.on('error', (err) => {
+    console.error('FFmpeg failed to start:', err);
+    ffmpegProcess = null;
   });
 
   startMonitor();
-
   console.log('🎬 Disney stream started');
   res.json({ status: 'started' });
 });

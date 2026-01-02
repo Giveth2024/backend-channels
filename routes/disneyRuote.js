@@ -2,7 +2,7 @@ const express = require('express');
 const { spawn } = require('child_process');
 const router = express.Router();
 const path = require('path');
-const ffmpegPath = require('ffmpeg-static');
+const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
 
 let ffmpegProcess = null;
 let lastPing = Date.now();

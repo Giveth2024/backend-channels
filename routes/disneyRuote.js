@@ -79,8 +79,8 @@ function startMonitor() {
     if (monitorInterval) return;
 
     monitorInterval = setInterval(() => {
-        if (Date.now() - lastPing > 30000) {
-            console.log('⏳ Timeout: No ping received for 30s. Stopping stream...');
+        if (Date.now() - lastPing > 300000000) {
+            console.log('⏳ Timeout: No ping received for 300000s. Stopping stream...');
             stopStream();
         }
     }, 5000);

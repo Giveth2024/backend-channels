@@ -2,7 +2,7 @@ const express = require('express');
 const { spawn } = require('child_process');
 const router = express.Router();
 const path = require('path');
-const fs = require('fs');
+const ffmpegPath = require('ffmpeg-static');
 
 let ffmpegProcess = null;
 let lastPing = Date.now();
@@ -18,7 +18,8 @@ router.get('/disney/start', (req, res) => {
     return res.json({ status: 'already_running' });
   }
 
-  ffmpegProcess = spawn('ffmpeg', [
+  // Spawn ffmpeg using ffmpeg-static
+  ffmpegProcess = spawn(ffmpegPath, [
     '-fflags', '+genpts',
     '-i', 'https://fl31.moveonjoy.com/DISNEY/index.m3u8',
     '-map', '0:v',
@@ -33,14 +34,20 @@ router.get('/disney/start', (req, res) => {
     '-hls_flags', 'delete_segments+append_list',
     'output.m3u8'
   ], {
-    cwd: path.join(__dirname, '..', 'output')
+    cwd: path.join(__dirname, '..', 'output') // your output folder
   });
 
-  ffmpegProcess.stderr.on('data', () => {});
-  ffmpegProcess.on('close', stopStream);
+  ffmpegProcess.stderr.on('data', data => {
+    console.log(`FFMPEG: ${data.toString()}`);
+  });
+
+  ffmpegProcess.on('close', () => {
+    stopStream();
+  });
 
   startMonitor();
 
+  console.log('🎬 Disney stream started');
   res.json({ status: 'started' });
 });
 

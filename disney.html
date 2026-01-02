@@ -241,97 +241,138 @@
 const video = document.getElementById('video');
 const loading = document.getElementById('loading');
 
-const STREAM_URL = 'https://backend-channels-5al8.onrender.com/hls/output.m3u8';
-const START_URL  = 'https://backend-channels-5al8.onrender.com/api/disney/start';
-const PING_URL   = 'https://backend-channels-5al8.onrender.com/api/disney/ping';
+// Use relative paths so it works on both localhost and Render
+const STREAM_URL = '/hls/output.m3u8';
+const START_URL  = '/api/disney/start';
+const PING_URL   = '/api/disney/ping';
+
+let hls = null;
+let lastVideoTime = 0;
+let stallCheckInterval = null;
 
 /* ==========================
-   START STREAM FROM FRONTEND
+   START STREAM & PING LOGIC
 ========================== */
-fetch(START_URL).catch(() => {});
-
-/* ==========================
-   KEEP STREAM ALIVE
-========================== */
-setInterval(() => {
-  fetch(PING_URL).catch(() => {});
-}, 15000);
-
-/* ==========================
-   HELPER TO WAIT FOR STREAM
-========================== */
-async function waitForStream(url, timeout = 30000, interval = 1000) {
-  const start = Date.now();
-  while (Date.now() - start < timeout) {
+async function initBackend() {
     try {
-      const resp = await fetch(url, { method: 'HEAD' });
-      if (resp.ok) return true;
-    } catch (err) {}
-    await new Promise(r => setTimeout(r, interval));
-  }
-  throw new Error('Stream not ready');
+        await fetch(START_URL);
+        // Ping immediately, then every 15s
+        sendPing();
+        setInterval(sendPing, 15000);
+    } catch (err) {
+        console.error("Failed to signal backend:", err);
+    }
+}
+
+function sendPing() {
+    fetch(PING_URL).catch(() => console.warn("Ping failed"));
+}
+
+/* ==========================
+   STALL DETECTOR
+   If video.currentTime doesn't change while playing, 
+   the HLS stream has likely hung.
+========================== */
+function startStallDetector() {
+    if (stallCheckInterval) clearInterval(stallCheckInterval);
+    
+    stallCheckInterval = setInterval(() => {
+        if (!video.paused && video.currentTime > 0) {
+            if (video.currentTime === lastVideoTime) {
+                console.warn("Detected stream stall. Recovering...");
+                recoverStream();
+            }
+            lastVideoTime = video.currentTime;
+        }
+    }, 5000); // Check every 5 seconds
+}
+
+function recoverStream() {
+    if (hls) {
+        hls.detachMedia();
+        hls.loadSource(STREAM_URL);
+        hls.attachMedia(video);
+    } else {
+        video.src = STREAM_URL;
+        video.load();
+    }
+}
+
+/* ==========================
+   HELPER TO WAIT FOR FILE
+========================== */
+async function waitForStream(url, timeout = 60000) {
+    const start = Date.now();
+    while (Date.now() - start < timeout) {
+        try {
+            const resp = await fetch(url, { method: 'HEAD' });
+            if (resp.ok) return true;
+        } catch (e) {}
+        await new Promise(r => setTimeout(r, 2000));
+    }
+    throw new Error('Stream timed out');
 }
 
 function hideLoading() {
-  loading.classList.add('hidden');
+    loading.classList.add('hidden');
 }
 
 /* ==========================
-   LOAD HLS WHEN STREAM IS READY
+   MAIN PLAYER INITIALIZATION
 ========================== */
 (async function initPlayer() {
-  try {
-    await waitForStream(STREAM_URL); // wait until m3u8 is ready
+    await initBackend();
 
-    if (Hls.isSupported()) {
-      const hls = new Hls({
-        enableWorker: false,
-        lowLatencyMode: false,
-        maxBufferLength: 30,
-        maxMaxBufferLength: 60,
-        backBufferLength: 30,
-        appendErrorMaxRetry: 10,
-        fragLoadingMaxRetry: 6,
-        liveSyncDurationCount: 3,
-        liveMaxLatencyDurationCount: 10
-      });
-
-      hls.loadSource(STREAM_URL);
-      hls.attachMedia(video);
-
-      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+    try {
+        await waitForStream(STREAM_URL);
         hideLoading();
-        video.play().catch(() => {});
-      });
 
-      hls.on(Hls.Events.ERROR, (event, data) => {
-        console.warn('HLS error:', data.details);
+        if (Hls.isSupported()) {
+            hls = new Hls({
+                liveSyncDuration: 6,      // Stay 6s behind live for stability
+                maxBufferLength: 20,      // Smaller buffer to prevent bloat
+                manifestLoadingMaxRetry: 10,
+                levelLoadingMaxRetry: 10
+            });
 
-        if (data.fatal) {
-          if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-            hls.startLoad();
-          } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
-            hls.recoverMediaError();
-          } else {
-            hls.destroy();
-          }
+            hls.loadSource(STREAM_URL);
+            hls.attachMedia(video);
+
+            hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                video.play().catch(e => console.log("Autoplay blocked, waiting for user interact"));
+                startStallDetector();
+            });
+
+            hls.on(Hls.Events.ERROR, (event, data) => {
+                if (data.fatal) {
+                    switch (data.type) {
+                        case Hls.ErrorTypes.NETWORK_ERROR:
+                            hls.startLoad();
+                            break;
+                        case Hls.ErrorTypes.MEDIA_ERROR:
+                            hls.recoverMediaError();
+                            break;
+                        default:
+                            initPlayer(); // Hard restart
+                            break;
+                    }
+                }
+            });
+
+        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+            // Safari / iOS Support
+            video.src = STREAM_URL;
+            video.addEventListener('loadedmetadata', () => {
+                hideLoading();
+                video.play();
+                startStallDetector();
+            });
         }
-      });
 
-    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      video.src = STREAM_URL;
-      video.addEventListener('loadedmetadata', () => {
-        hideLoading();
-        video.play();
-      });
-    } else {
-      alert('HLS not supported in this browser');
+    } catch (err) {
+        loading.textContent = 'Stream error. Please refresh the page.';
+        console.error(err);
     }
-
-  } catch (err) {
-    loading.textContent = 'Stream not available. Please refresh.';
-    console.error(err);
-  }
 })();
 </script>
 

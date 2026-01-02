@@ -64,14 +64,52 @@ router.get('/disney/ping', (req, res) => {
    STOP STREAM
 ============================ */
 function stopStream() {
-    if (ffmpegProcess) {
-        ffmpegProcess.kill('SIGKILL');
-        ffmpegProcess = null;
+    // 1. Only run if ffmpegProcess actually exists
+    if (!ffmpegProcess) {
+        return; 
     }
+
+    console.log('🛑 Stopping Disney stream...');
+    
+    // Kill the process
+    ffmpegProcess.kill('SIGKILL');
+    ffmpegProcess = null; // Set to null immediately to prevent double-run
+
     stopMonitor();
-    console.log('🛑 Disney stream stopped');
+
+    // 2. Wait for FFmpeg to fully release files before clearing
+    setTimeout(() => {
+        clearOutputFolder();
+    }, 2000);
 }
 
+/* ============================
+   CLEANUP FUNCTION
+============================ */
+function clearOutputFolder() {
+    if (!fs.existsSync(outputDir)) return;
+
+    fs.readdir(outputDir, (err, files) => {
+        if (err) {
+            console.error('Error reading output folder:', err);
+            return;
+        }
+
+        files.forEach(file => {
+            const filePath = path.join(outputDir, file);
+            
+            // 3. Check if file exists BEFORE trying to delete it
+            if (fs.existsSync(filePath)) {
+                try {
+                    fs.unlinkSync(filePath);
+                } catch (unlinkErr) {
+                    // Ignore errors if file disappeared between existsSync and unlink
+                }
+            }
+        });
+        console.log('🧹 Output folder cleared.');
+    });
+}
 /* ============================
    MONITOR FRONTEND
 ============================ */
@@ -79,8 +117,8 @@ function startMonitor() {
     if (monitorInterval) return;
 
     monitorInterval = setInterval(() => {
-        if (Date.now() - lastPing > 300000000) {
-            console.log('⏳ Timeout: No ping received for 300000s. Stopping stream...');
+        if (Date.now() - lastPing > 30000) {
+            console.log('⏳ Timeout: No ping received for 30s. Stopping stream...');
             stopStream();
         }
     }, 5000);

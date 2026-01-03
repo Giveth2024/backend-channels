@@ -1,8 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 
-// Adjust this path to match your project structure
-const outputDir = path.join(__dirname, 'output');
+// Go up one level from 'functions' to reach 'output'
+const outputDir = path.join(__dirname, '..', 'output');
 
 function monitorFiles() {
     console.log(`--- 📂 File Monitor (${new Date().toLocaleTimeString()}) ---`);

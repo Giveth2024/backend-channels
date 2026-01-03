@@ -24,15 +24,20 @@ router.get('/disney/start', (req, res) => {
 
     // 2. SPAWN: Using the system ffmpeg
     ffmpegProcess = spawn(ffmpegPath, [
-        '-fflags', '+genpts',
+        '-loglevel', 'error',               // Hide spam, only show real errors
+        '-reconnect', '1',                  // Reconnect if the input stream drops
+        '-reconnect_at_eof', '1',           // Reconnect if the file ends unexpectedly
+        '-reconnect_streamed', '1',         // Essential for online .m3u8 sources
+        '-reconnect_delay_max', '5',        // Max 5 seconds wait before retry
+        '-fflags', '+genpts+igndts',        // Ignore timestamp errors from source
         '-i', 'https://fl31.moveonjoy.com/DISNEY/index.m3u8',
         '-map', '0:v', '-map', '0:a',
-        '-c:v', 'copy',
+        '-c:v', 'copy',                     // 'copy' is good, uses less CPU
         '-c:a', 'aac', '-b:a', '128k', '-ac', '2',
         '-f', 'hls',
         '-hls_time', '4',
         '-hls_list_size', '10',
-        '-hls_flags', 'delete_segments+append_list',
+        '-hls_flags', 'delete_segments+append_list+discont_start', // discont_start helps players handle gaps
         'output.m3u8'
     ], {
         cwd: outputDir 

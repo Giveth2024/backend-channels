@@ -5,6 +5,7 @@ const path = require('path');
 
 const pokemonRoute = require('./routes/pokemonRoute');
 const disneyRoute = require('./routes/disneyRuote');
+const { monitorFiles } = require('./functions/files');
 
 const app = express();
 const PORT = 3000;
@@ -255,7 +256,10 @@ app.use('/pokemon', pokemonRoute);
 // Disney route
 app.use('/api', disneyRoute);
 
+setInterval(monitorFiles, 30000); // Monitor files every 30 seconds
 
 app.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);
+    // Run initial file monitor on startup
+    monitorFiles();
 });

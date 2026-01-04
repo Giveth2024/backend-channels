@@ -1,95 +1,82 @@
 const express = require('express');
-const router = express.Router();
-const path = require('path');
 const axios = require('axios');
-const crypto = require('crypto');
+const NodeCache = require("node-cache");
+const path = require('path');
+const cors = require("cors");
+const router = express.Router();
 
-router.get('/data', (req, res) => {
-    res.json({ name: "Pikachu", type: "Electric" });
-});
+const segmentCache = new NodeCache({ stdTTL: 300, checkperiod: 60 }); // Cache for 5 mins
 
-router.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, '../pokemon.html'));
-});
+const PLUTO_BASE_URL = "https://cfd-v4-service-channel-stitcher-use1-1.prd.pluto.tv/stitch/hls/channel/6675c7868768aa0008d7f1c7";
+const MASTER_URL = `${PLUTO_BASE_URL}/master.m3u8?terminate=false&appName=web&appVersion=unknown&clientTime=0&deviceDNT=0&deviceId=d3595b5a-7553-4a6b-b9dd-c30951631395&deviceMake=Chrome&deviceModel=web&deviceType=web&deviceVersion=unknown&includeExtendedEvents=false&serverSideAds=false&sid=bc32713f-dc5f-45d9-8650-2b4e69506b23`;
 
-const PLUTO_HEADERS = {
-    'Origin': 'https://pluto.tv',
-    'Referer': 'https://pluto.tv',
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-    'Connection': 'keep-alive'
-};
 
-// Endpoint 1: Master Manifest Handler
-router.get('/master', async (req, res) => {
-    const { url } = req.query;
+// 1. Get Quality and return the specific playlist URL
+router.get('/quality/:id', async (req, res) => {
     try {
-        const response = await axios.get(url, { headers: PLUTO_HEADERS });
-        const baseUrl = url.substring(0, url.lastIndexOf('/') + 1);
+        const qualityIndex = parseInt(req.params.id);
+        const response = await axios.get(MASTER_URL);
+        const lines = response.data.split('\n');
         
-        // Rewrite variants to point to our playlist proxy
-        const rewritten = response.data.replace(/^(?!#)(.+)$/gm, (line) => {
-            const absolute = line.startsWith('http') ? line : new URL(line, baseUrl).href;
-            return `https://backend-channels-5al8.onrender.com/pokemon/playlist?url=${encodeURIComponent(absolute)}`;
-        });
-
-        res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
-        res.send(rewritten);
-    } catch (e) { res.status(500).send("Master fetch failed"); }
-});
-
-// Endpoint 2: Playlist & Decryption Proxy
-router.get('/playlist', async (req, res) => {
-    const { url } = req.query;
-    try {
-        const response = await axios.get(url, { headers: PLUTO_HEADERS });
-        let content = response.data;
-        const baseUrl = url.substring(0, url.lastIndexOf('/') + 1);
-
-        // 1. DONT strip #EXT-X-DISCONTINUITY. The player NEEDS it to switch 
-        // between the Pokemon key and the Ad key.
+        // Filter lines that are playlist URIs (usually follow #EXT-X-STREAM-INF)
+        const playlists = lines.filter(line => line.includes('playlist.m3u8'));
         
-        const rewritten = content.split('\n').map(line => {
-            const trimmed = line.trim();
-            
-            // Handle Key lines
-            if (trimmed.startsWith('#EXT-X-KEY')) {
-                return trimmed.replace(/URI="(.+?)"/, (m, uri) => {
-                    const abs = uri.startsWith('http') ? uri : new URL(uri, baseUrl).href;
-                    return `URI="https://backend-channels-5al8.onrender.com/pokemon/decrypt?url=${encodeURIComponent(abs)}"`;
-                });
-            }
-
-            // Handle TS Segment lines
-            if (trimmed && !trimmed.startsWith('#')) {
-                const abs = trimmed.startsWith('http') ? trimmed : new URL(trimmed, baseUrl).href;
-                return `https://backend-channels-5al8.onrender.com/pokemon/decrypt?url=${encodeURIComponent(abs)}`;
-            }
-
-            return line;
-        }).join('\n');
-
-        res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
-        res.send(rewritten);
-    } catch (e) {
-        res.status(500).send("Playlist Error");
+        if (playlists[qualityIndex]) {
+            // Return the watch URL for our local proxy
+            res.json({ url: `/pokemon/watch?path=${encodeURIComponent(playlists[qualityIndex])}` });
+        } else {
+            res.status(404).send('Quality level not found');
+        }
+    } catch (error) {
+        res.status(500).send(error.message);
     }
 });
 
-// Endpoint 3: Server-side Decryptor
-router.get('/decrypt', async (req, res) => {
-    const start = Date.now();
-    const { url } = req.query;
+// 2. Watch endpoint (Proxies the .m3u8 and caches segments)
+router.get('/watch', async (req, res) => {
     try {
-        const response = await axios.get(url, { headers: PLUTO_HEADERS, responseType: 'arraybuffer' });
-        const duration = Date.now() - start;
+        const relativePath = req.query.path;
+        const fullUrl = `${PLUTO_BASE_URL}/${relativePath}`;
         
-        // Log telemetry as requested
-        console.log(`[200 OK] | Time: ${duration}ms | Size: ${(response.data.byteLength / 1024).toFixed(2)} KB/s | URL: ${url.substring(0, 40)}...`);
+        const response = await axios.get(fullUrl);
+        let manifest = response.data;
 
-        // If it's a key file, just return the raw bytes (16 bytes)
-        // If it's a TS file, we send it as is (the hls.js player handles AES if the key is provided)
-        res.send(response.data);
-    } catch (e) { res.status(500).send("Decrypt fetch failed"); }
+        // Pre-cache segments found in this manifest (3-5 ahead logic)
+        const segmentUrls = manifest.match(/https?:\/\/[^ \n]+\.ts/g) || [];
+        segmentUrls.slice(0, 5).forEach(url => {
+            fetchAndCacheSegment(url);
+        });
+
+        res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
+        res.send(manifest);
+    } catch (error) {
+        res.status(500).send(error.message);
+    }
+});
+
+// Helper: Fetch and store in memory cache
+async function fetchAndCacheSegment(url) {
+    if (segmentCache.has(url)) return;
+    try {
+        const resp = await axios.get(url, { responseType: 'arraybuffer' });
+        segmentCache.set(url, resp.data);
+        console.log(`Cached: ${url.substring(url.lastIndexOf('/') + 1)}`);
+    } catch (e) {
+        console.error("Cache fail", e.message);
+    }
+}
+
+// 3. Segment proxy (The player calls this if you rewrite manifest URLs, 
+// or you can let the player call the siloh-ns1 URLs directly)
+router.get('/proxy-segment', async (req, res) => {
+    const url = req.query.url;
+    let data = segmentCache.get(url);
+    
+    if (!data) {
+        const resp = await axios.get(url, { responseType: 'arraybuffer' });
+        data = resp.data;
+    }
+    res.end(data);
 });
 
 module.exports = router;

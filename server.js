@@ -29,6 +29,10 @@ app.get('/disney', (req, res) => {
     res.sendFile(path.join(__dirname, 'disney.html'));
 });
 
+app.get('/pokemontv', (req, res) => {
+    res.sendFile(path.join(__dirname, 'pokemon.html'));
+});
+
 app.get('/server', (req, res) => {
     res.json("Server is running");
 });

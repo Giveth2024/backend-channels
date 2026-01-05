@@ -1,61 +1,82 @@
-HLS Proxy Player for Pluto TV
+# Multi-Channel HLS Proxy Server
 
-This project demonstrates how to play restricted HLS (HTTP Live Streaming) content by building a custom Express proxy. It specifically addresses challenges found when attempting to stream Pluto TV content in a standard web browser.
-🚀 The Problem
+This project is a sophisticated HLS (HTTP Live Streaming) proxy server built with Node.js and Express. It enables the streaming of restricted content (like Pluto TV and other live streams) by bypassing CORS restrictions and spoofing necessary headers, ensuring smooth playback in standard web browsers.
 
-Pluto TV's video streams have two main security layers that prevent them from playing in a standard <video> tag or hls.js instance directly:
+## 🚀 Key Features
 
-    CORS (Cross-Origin Resource Sharing): The browser blocks requests made from your local domain to Pluto's servers.
+- **Multi-Channel Support**: Dedicated routes and pages for various channels:
+  - **Nickelodeon**
+  - **Disney**
+  - **Pokemon TV**
+  - **Tom & Jerry**
+- **Smart Proxying**: Handles header spoofing (Origin, Referer, User-Agent) to bypass stream restrictions.
+- **Manifest Rewriting**: Dynamically rewrites HLS manifests (`.m3u8`) to route segments and keys through the local proxy.
+- **Caching Mechanism**: 
+  - **Memory Cache**: Uses `NodeCache` and in-memory maps to cache `.ts` segments, reducing latency and upstream load.
+  - **Segment Pre-fetching**: Some routes implement logic to pre-fetch upcoming segments.
+- **File Monitoring**: Built-in utility to monitor and log the contents of specific HLS directories (e.g., `output`, `Nickelodeon`).
+- **Static Assets**: Serves channel-related images and static HLS segments.
 
-    Header Verification: Pluto's servers check for specific Origin and Referer headers. If these headers aren't present or are incorrect, the server returns a 403 Forbidden error.
+## 🛠️ Technology Stack
 
-🛠️ The Solution (Step-by-Step)
-1. The Proxy Server (server.js)
+- **Backend**: Node.js, Express
+- **HTTP Client**: Axios
+- **Caching**: `node-cache`
+- **Utilities**: `ffmpeg` (via `@ffmpeg-installer/ffmpeg` and `ffmpeg-static`)
+- **Development**: `nodemon`
 
-We created a Node.js server using Express and Axios. Instead of the browser talking to Pluto TV, the browser talks to our server.
+## 📂 Project Structure
 
-    Header Spoofing: Our server makes the request to Pluto TV using Axios, manually attaching the required headers (Origin: https://pluto.tv). Servers talking to servers are not restricted by CORS.
+```text
+├── server.js               # Main entry point, core proxy logic, and routing
+├── routes/                 # Express router modules for specific channels
+│   ├── NickelodeonRoute.js # Nickelodeon API routes
+│   ├── disneyRuote.js      # Disney API routes
+│   └── pokemonRoute.js      # Pokemon TV API routes
+├── functions/              # Utility functions
+│   └── files.js            # File system monitoring logic
+├── images/                 # Thumbnail and logo assets
+├── downloads/              # Directory for downloaded content
+├── output/                 # Generic HLS output directory
+├── Nickelodeon/            # Specific directory for Nickelodeon segments
+├── *.html                  # Frontend players for each channel
+├── package.json            # Dependencies and scripts
+└── reminder.txt            # Project notes
+```
 
-    Content Delivery: Our server receives the video data and pipes it back to the browser, adding the Access-Control-Allow-Origin: * header so the browser allows the data through.
+## 📦 Getting Started
 
-2. Manifest Rewriting (The "Magic" Step)
+### 1. Install Dependencies
+```bash
+npm install
+```
 
-HLS streams consist of a "Master Manifest" which contains links to "Sub-Manifests" (for different qualities), which then contain links to "Segments" (the actual video chunks).
+### 2. Run the Server
+**Development Mode (with auto-reload):**
+```bash
+npm run dev
+```
 
-    The Issue: Pluto TV uses relative paths inside their files (e.g., 1042180/playlist.m3u8). Without modification, your browser tries to find these files on localhost:3000 and fails.
+**Production Mode:**
+```bash
+npm start
+```
 
-    The Fix: Our Express proxy parses the text of the .m3u8 files. It finds every relative URL and prepends our proxy address to it.
+### 3. Access the Channels
+Once the server is running, you can access the following pages:
+- **Nickelodeon**: `http://localhost:3000/nickelodeon`
+- **Disney**: `http://localhost:3000/disney`
+- **Pokemon TV**: `http://localhost:3000/pokemontv`
+- **Tom & Jerry**: `http://localhost:3000/tomandjerry`
 
-    Result: Every single request—from the master playlist down to the smallest video chunk—is automatically routed through our proxy with the correct headers.
+## 🔌 API Endpoints
 
-3. Frontend Integration (index.html)
+- `/proxy?url=...`: General-purpose HLS proxy with header spoofing.
+- `/hls/master.m3u8`: Local master playlist for proxied streams.
+- `/pokemon/watch?path=...`: Dedicated Pokemon TV proxy endpoint.
+- `/api/nickelodeon/...`: Routes for Nickelodeon content.
+- `/api/disney/...`: Routes for Disney content.
+- `/server`: Simple status check to verify the server is running.
 
-We updated the player to point to our local proxy endpoint:
-JavaScript
-
-const hlsUrl = `http://localhost:3000/proxy?url=${encodeURIComponent(ORIGINAL_PLUTO_URL)}`;
-
-This triggers the chain reaction where the hls.js library fetches everything through our Node.js middleware.
-📦 Installation & Usage
-
-    Install Dependencies:
-    Bash
-
-npm install express axios cors
-
-Run the Server:
-Bash
-
-    node server.js
-
-    Access the Player: Open your browser and navigate to http://localhost:3000.
-
-📂 Project Structure
-
-    server.js: The Express backend that handles header spoofing, CORS, and manifest rewriting.
-
-    index.html: The frontend HLS player with a quality selector.
-
-    package.json: Project metadata and dependencies.
-
-    echo "# backend-channels" >> README.md
+---
+*Created for experimental HLS streaming purposes.*

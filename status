@@ -17,3 +17,13 @@ ffmpeg -fflags +genpts -i http://23.237.104.106:8080/USA_NICKELODEON/playlist.m3
 -hls_list_size 10 ^
 -hls_flags delete_segments+append_list ^
 nickelodeon.m3u8
+
+ffmpeg -fflags +genpts -i http://fl1.moveonjoy.com/DISNEY_XD/index.m3u8 ^
+-map 0:v -map 0:a ^
+-c:v copy ^
+-c:a aac -b:a 128k -ac 2 ^
+-f hls ^
+-hls_time 4 ^
+-hls_list_size 10 ^
+-hls_flags delete_segments+append_list ^
+disneyxd.m3u8

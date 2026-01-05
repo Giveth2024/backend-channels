@@ -5,6 +5,7 @@ const path = require('path');
 
 const pokemonRoute = require('./routes/pokemonRoute');
 const disneyRoute = require('./routes/disneyRuote');
+const disneyXDRoute = require('./routes/disneyXDRuote');
 const nickelodeonRoute = require('./routes/nickelodeonChannelRoute');
 const { monitorFiles } = require('./functions/files');
 
@@ -16,13 +17,24 @@ app.use(cors());
 app.disable('x-powered-by');
 
 app.use('/images', express.static(path.join(__dirname, 'images')));
+
+// Disney HLS static folder
+
 app.use(
   '/hls',
   express.static(path.join(__dirname, 'output'))
 );
+
+// Nickelodeon HLS static folder
 app.use(
   '/hls',
   express.static(path.join(__dirname, 'Nickelodeon'))
+);
+
+// DisneyXD HLS static folder
+app.use(
+  '/hls',
+  express.static(path.join(__dirname, 'disneyxd'))
 );
 
 //Pages
@@ -32,6 +44,10 @@ app.get('/tomandjerry', (req, res) => {
 
 app.get('/disney', (req, res) => {
     res.sendFile(path.join(__dirname, 'disney.html'));
+});
+
+app.get('/disneyxd', (req, res) => {
+    res.sendFile(path.join(__dirname, 'disneyxd.html'));
 });
 
 app.get('/nickelodeon', (req, res) => {
@@ -268,6 +284,9 @@ app.use('/pokemon', pokemonRoute);
 
 // Disney route
 app.use('/api', disneyRoute);
+
+// DisneyXD route
+app.use('/api', disneyXDRoute);
 
 // Nickelodeon route
 app.use('/api', nickelodeonRoute);

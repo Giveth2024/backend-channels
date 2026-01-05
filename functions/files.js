@@ -4,6 +4,7 @@ const path = require('path');
 // Paths to the directories
 const outputDir = path.join(__dirname, '..', 'output');
 const nickDir = path.join(__dirname, '..', 'Nickelodeon'); // Path to the new folder
+const disneyXD = path.join(__dirname, '..', 'disneyxd'); // Path to the new folder
 
 // Helper function to scan and log folder contents
 function scanFolder(folderPath, folderName) {
@@ -36,6 +37,9 @@ function monitorFiles() {
 
     // Check the Nickelodeon folder
     scanFolder(nickDir, 'Nickelodeon');
+
+    // Check the DisneyXD folder
+    scanFolder(disneyXD, 'DisneyXD');
 
     console.log('------------------------------------------');
 }

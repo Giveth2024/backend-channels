@@ -9,7 +9,7 @@ const router = express.Router();
 const ffmpegPath = 'ffmpeg'; 
 
 // Ensure the output directory exists
-const outputDir = path.join(__dirname, '..', 'Nickelodeon');
+const outputDir = path.join(__dirname, '..', 'disneyxd');
 if (!fs.existsSync(outputDir)) {
     fs.mkdirSync(outputDir, { recursive: true });
 }
@@ -18,7 +18,7 @@ let ffmpegProcess = null;
 let lastPing = Date.now();
 let monitorInterval = null;
 
-router.get('/nickelodeon/start', (req, res) => {
+router.get('/disneyxd/start', (req, res) => {
     lastPing = Date.now();
     if (ffmpegProcess) return res.json({ status: 'already_running' });
 
@@ -30,7 +30,7 @@ router.get('/nickelodeon/start', (req, res) => {
         '-reconnect_streamed', '1',         // Essential for online .m3u8 sources
         '-reconnect_delay_max', '5',        // Max 5 seconds wait before retry
         '-fflags', '+genpts+igndts',        // Ignore timestamp errors from source
-        '-i', 'http://23.237.104.106:8080/USA_NICKELODEON/playlist.m3u8',
+        '-i', 'http://fl1.moveonjoy.com/DISNEY_XD/index.m3u8',
         '-map', '0:v', '-map', '0:a',
         '-c:v', 'copy',                     // 'copy' is good, uses less CPU
         '-c:a', 'aac', '-b:a', '128k', '-ac', '2',
@@ -38,7 +38,7 @@ router.get('/nickelodeon/start', (req, res) => {
         '-hls_time', '4',
         '-hls_list_size', '10',
         '-hls_flags', 'delete_segments+append_list+discont_start', // discont_start helps players handle gaps
-        'nickelodeon.m3u8'
+        'disneyxd.m3u8'
     ], {
         cwd: outputDir 
     });
@@ -59,7 +59,7 @@ router.get('/nickelodeon/start', (req, res) => {
 /* ============================
    FRONTEND PING
 ============================ */
-router.get('/nickelodeon/ping', (req, res) => {
+router.get('/disneyxd/ping', (req, res) => {
   lastPing = Date.now();
   res.json({ status: 'alive' });
 });
@@ -74,7 +74,7 @@ function stopStream() {
         return; 
     }
 
-    console.log('🛑 Stopping Nickelodeon stream...');
+    console.log('🛑 Stopping DisneyXD stream...');
     
     // Kill the process
     ffmpegProcess.kill('SIGKILL');
@@ -96,7 +96,7 @@ function clearOutputFolder() {
 
     fs.readdir(outputDir, (err, files) => {
         if (err) {
-            console.error('Error reading Nickelodeon folder:', err);
+            console.error('Error reading DisneyXD folder:', err);
             return;
         }
 
@@ -112,7 +112,7 @@ function clearOutputFolder() {
                 }
             }
         });
-        console.log('🧹 Nickelodeon folder cleared.');
+        console.log('🧹 DisneyXD folder cleared.');
     });
 }
 /* ============================

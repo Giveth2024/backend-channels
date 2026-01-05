@@ -7,6 +7,7 @@ This project is a sophisticated HLS (HTTP Live Streaming) proxy server built wit
 - **Multi-Channel Support**: Dedicated routes and pages for various channels:
   - **Nickelodeon**
   - **Disney**
+  - **Disney XD**
   - **Pokemon TV**
   - **Tom & Jerry**
 - **Smart Proxying**: Handles header spoofing (Origin, Referer, User-Agent) to bypass stream restrictions.
@@ -14,7 +15,7 @@ This project is a sophisticated HLS (HTTP Live Streaming) proxy server built wit
 - **Caching Mechanism**: 
   - **Memory Cache**: Uses `NodeCache` and in-memory maps to cache `.ts` segments, reducing latency and upstream load.
   - **Segment Pre-fetching**: Some routes implement logic to pre-fetch upcoming segments.
-- **File Monitoring**: Built-in utility to monitor and log the contents of specific HLS directories (e.g., `output`, `Nickelodeon`).
+- **File Monitoring**: Built-in utility to monitor and log the contents of specific HLS directories (e.g., `output`, `Nickelodeon`, `disneyxd`).
 - **Static Assets**: Serves channel-related images and static HLS segments.
 
 ## 🛠️ Technology Stack
@@ -30,15 +31,17 @@ This project is a sophisticated HLS (HTTP Live Streaming) proxy server built wit
 ```text
 ├── server.js               # Main entry point, core proxy logic, and routing
 ├── routes/                 # Express router modules for specific channels
-│   ├── NickelodeonRoute.js # Nickelodeon API routes
+│   ├── nickelodeonChannelRoute.js # Nickelodeon API routes
 │   ├── disneyRuote.js      # Disney API routes
+│   ├── disneyXDRuote.js    # Disney XD API routes
 │   └── pokemonRoute.js      # Pokemon TV API routes
 ├── functions/              # Utility functions
 │   └── files.js            # File system monitoring logic
 ├── images/                 # Thumbnail and logo assets
 ├── downloads/              # Directory for downloaded content
-├── output/                 # Generic HLS output directory
-├── Nickelodeon/            # Specific directory for Nickelodeon segments
+├── output/                 # Disney HLS output directory
+├── Nickelodeon/            # Nickelodeon HLS directory
+├── disneyxd/               # Disney XD HLS directory
 ├── *.html                  # Frontend players for each channel
 ├── package.json            # Dependencies and scripts
 └── reminder.txt            # Project notes
@@ -66,6 +69,7 @@ npm start
 Once the server is running, you can access the following pages:
 - **Nickelodeon**: `http://localhost:3000/nickelodeon`
 - **Disney**: `http://localhost:3000/disney`
+- **Disney XD**: `http://localhost:3000/disneyxd`
 - **Pokemon TV**: `http://localhost:3000/pokemontv`
 - **Tom & Jerry**: `http://localhost:3000/tomandjerry`
 
@@ -74,8 +78,7 @@ Once the server is running, you can access the following pages:
 - `/proxy?url=...`: General-purpose HLS proxy with header spoofing.
 - `/hls/master.m3u8`: Local master playlist for proxied streams.
 - `/pokemon/watch?path=...`: Dedicated Pokemon TV proxy endpoint.
-- `/api/nickelodeon/...`: Routes for Nickelodeon content.
-- `/api/disney/...`: Routes for Disney content.
+- `/api/...`: Channel-specific API routes (Nickelodeon, Disney, Disney XD).
 - `/server`: Simple status check to verify the server is running.
 
 ---

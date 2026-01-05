@@ -5,7 +5,7 @@ const path = require('path');
 
 const pokemonRoute = require('./routes/pokemonRoute');
 const disneyRoute = require('./routes/disneyRuote');
-const nickelodeonRoute = require('./routes/NickelodeonRoute');
+const nickelodeonRoute = require('./routes/nickelodeonChannelRoute');
 const { monitorFiles } = require('./functions/files');
 
 const app = express();

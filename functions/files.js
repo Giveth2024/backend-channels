@@ -1,34 +1,43 @@
 const fs = require('fs');
 const path = require('path');
 
-// Go up one level from 'functions' to reach 'output'
+// Paths to the directories
 const outputDir = path.join(__dirname, '..', 'output');
+const nickDir = path.join(__dirname, '..', 'Nickelodeon'); // Path to the new folder
 
-function monitorFiles() {
-    console.log(`--- 📂 File Monitor (${new Date().toLocaleTimeString()}) ---`);
-
-    if (!fs.existsSync(outputDir)) {
-        console.log('⚠️  Output folder does not exist yet.');
+// Helper function to scan and log folder contents
+function scanFolder(folderPath, folderName) {
+    if (!fs.existsSync(folderPath)) {
+        console.log(`⚠️  ${folderName} folder does not exist yet.`);
         return;
     }
 
-    fs.readdir(outputDir, (err, files) => {
-        if (err) {
-            console.error('❌ Error reading output folder:', err);
-            return;
-        }
-
+    try {
+        const files = fs.readdirSync(folderPath);
         // Filter out hidden files like .gitkeep or .DS_Store
         const activeFiles = files.filter(f => !f.startsWith('.'));
 
         if (activeFiles.length === 0) {
-            console.log('💨 No files found in the output folder.');
+            console.log(`💨 No files found in the ${folderName} folder.`);
         } else {
-            console.log(`📊 Total Files: ${activeFiles.length}`);
+            console.log(`📊 ${folderName} Total Files: ${activeFiles.length}`);
             console.log(`📄 Files: [ ${activeFiles.join(', ')} ]`);
         }
-        console.log('------------------------------------------');
-    });
+    } catch (err) {
+        console.error(`❌ Error reading ${folderName} folder:`, err);
+    }
+}
+
+function monitorFiles() {
+    console.log(`--- 📂 File Monitor (${new Date().toLocaleTimeString()}) ---`);
+
+    // Check the original output folder
+    scanFolder(outputDir, 'Output');
+
+    // Check the Nickelodeon folder
+    scanFolder(nickDir, 'Nickelodeon');
+
+    console.log('------------------------------------------');
 }
 
 // Export the function to be used in server.js

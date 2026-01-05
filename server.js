@@ -5,6 +5,7 @@ const path = require('path');
 
 const pokemonRoute = require('./routes/pokemonRoute');
 const disneyRoute = require('./routes/disneyRuote');
+const nickelodeonRoute = require('./routes/NickelodeonRoute');
 const { monitorFiles } = require('./functions/files');
 
 const app = express();
@@ -19,6 +20,10 @@ app.use(
   '/hls',
   express.static(path.join(__dirname, 'output'))
 );
+app.use(
+  '/hls',
+  express.static(path.join(__dirname, 'Nickelodeon'))
+);
 
 //Pages
 app.get('/tomandjerry', (req, res) => {
@@ -27,6 +32,10 @@ app.get('/tomandjerry', (req, res) => {
 
 app.get('/disney', (req, res) => {
     res.sendFile(path.join(__dirname, 'disney.html'));
+});
+
+app.get('/nickelodeon', (req, res) => {
+    res.sendFile(path.join(__dirname, 'nickelodeon.html'));
 });
 
 app.get('/pokemontv', (req, res) => {
@@ -259,6 +268,9 @@ app.use('/pokemon', pokemonRoute);
 
 // Disney route
 app.use('/api', disneyRoute);
+
+// Nickelodeon route
+app.use('/api', nickelodeonRoute);
 
 setInterval(monitorFiles, 30000); // Monitor files every 30 seconds
 

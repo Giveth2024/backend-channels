@@ -49,37 +49,82 @@ This project is a sophisticated HLS (HTTP Live Streaming) proxy server built wit
 
 ## 📦 Getting Started
 
-### 1. Install Dependencies
+### Requirements
+- Node.js 16+ and `npm`
+- `ffmpeg` available on the system PATH (required for stream repackaging endpoints)
+
+### Install
 ```bash
 npm install
 ```
 
-### 2. Run the Server
-**Development Mode (with auto-reload):**
+### Run
+- Development (auto-reload):
 ```bash
 npm run dev
 ```
-
-**Production Mode:**
+- Production:
 ```bash
 npm start
 ```
 
-### 3. Access the Channels
-Once the server is running, you can access the following pages:
+Server default: `http://localhost:3000`
+
+### Available Pages
 - **Nickelodeon**: `http://localhost:3000/nickelodeon`
 - **Disney**: `http://localhost:3000/disney`
 - **Disney XD**: `http://localhost:3000/disneyxd`
 - **Pokemon TV**: `http://localhost:3000/pokemontv`
 - **Tom & Jerry**: `http://localhost:3000/tomandjerry`
 
-## 🔌 API Endpoints
+---
 
-- `/proxy?url=...`: General-purpose HLS proxy with header spoofing.
-- `/hls/master.m3u8`: Local master playlist for proxied streams.
-- `/pokemon/watch?path=...`: Dedicated Pokemon TV proxy endpoint.
-- `/api/...`: Channel-specific API routes (Nickelodeon, Disney, Disney XD).
-- `/server`: Simple status check to verify the server is running.
+## ⚙️ Behavior Notes & Troubleshooting
+
+- FFmpeg must be installed and accessible on the command line for the `/api/*/start` endpoints to work.
+- The server mounts several static folders at `/hls`. If a requested file exists in any mounted directory it will be served (order matters).
+- `.ts` segments are cached in-memory for a short TTL (~60s) to reduce repeated upstream requests.
+- Proxy endpoints use short timeouts to avoid hanging requests — upstream timeouts return `502`.
+- Check console logs for `ffmpeg` errors, TS cache hits, and manifest fetch status when debugging.
+
+## 🧰 Developer Tips
+- Use `npm run dev` while iterating — `nodemon` will auto-reload on changes.
+- Check the console to see master/media playlist fetch logs and TS caching activity.
+- `functions/monitorFiles()` is called on startup and every 30s; it logs folder contents to help confirm HLS fragments are written as expected.
+
+
+## 🔌 Important API & HLS Endpoints
+
+- GET `/server`
+  - Returns a simple status JSON ("Server is running").
+
+- GET `/proxy?url=<URL>`
+  - General-purpose proxy for playlists, segments, and keys.
+  - Spoofs headers (Origin/Referer/User-Agent) and rewrites `.m3u8` manifests so segment/key URLs point back to the `/proxy` endpoint.
+  - Examples:
+    - `GET /proxy?url=https://example.com/playlist.m3u8`
+    - The proxy sets `Cache-Control: no-cache` to avoid stale keys/playlists.
+
+- HLS aggregator endpoints (based on `BASE` in `server.js`):
+  - `/hls/master.m3u8` — local master playlist (rewritten upstream master)
+  - `/hls/media.m3u8`  — media playlist rewritten to route `.ts` => `/hls/segment.ts?file=...`
+  - `/hls/segment.ts?file=<file>` — serves/caches TS segments using a simple in-memory map (TTL ~ 60s)
+
+- Pokemon-specific endpoints (in `routes/pokemonRoute.js`):
+  - `/pokemon/quality/:id` — selects a quality level from the upstream master and returns a local watch URL
+  - `/pokemon/watch?path=<relative_path>` — proxies the selected playlist and pre-caches a few TS segments
+  - `/pokemon/proxy-segment?url=<url>` — serves cached segment if available, otherwise fetches upstream
+
+- Channel control endpoints (spawn `ffmpeg` to repackage streams locally):
+  - `/api/disney/start` — start Disney ffmpeg repackaging (writes `output/output.m3u8`)
+  - `/api/disney/ping` — keep-alive ping for the Disney stream
+  - `/api/disneyxd/start` and `/api/disneyxd/ping`
+  - `/api/nickelodeon/start` and `/api/nickelodeon/ping`
+  - `/api/disneyJunior/start` and `/api/disneyJunior/ping`
+  - `/api/nickJunior/start` and `/api/nickJunior/ping`
+  - `/api/nickToons/start` and `/api/nickToons/ping`
+
+These endpoints are intended for simple control from the frontend players (the HTML pages included) or for manual use (curl/postman).
 
 ---
 *Created for experimental HLS streaming purposes.*

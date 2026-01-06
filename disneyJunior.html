@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Disney Junior TV</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" href="./images/DisneyJunior.jpg" />
+
+  <style>
+    :root {
+      --bg: #0c0a09;
+      --card: #1c1917cc;
+      --border: #292524;
+      --amber: #fbbf24;
+      --text: #f5f5f4;
+      --muted: #a8a29e;
+    }
+
+    * { box-sizing: border-box; font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .container {
+      max-width: 1280px;
+      margin: auto;
+      padding: 1rem;
+    }
+
+    .back {
+      margin-bottom: 1rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 42px;
+      height: 42px;
+      text-decoration: none;
+      background: var(--amber);
+      color: black;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      font-size: 1.2rem;
+      transition: all 0.2s ease;
+      backdrop-filter: blur(8px);
+    }
+
+    .back:hover {
+      background: rgba(255,255,255,0.1);
+      border-color: var(--amber);
+      color: var(--amber);
+      transform: translateX(-3px);
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 1.5rem;
+      padding: 1.5rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    .poster {
+      width: 260px;
+      height: 260px;
+      border-radius: 1rem;
+      overflow: hidden;
+      border: 2px solid rgba(251,191,36,.3);
+      box-shadow: 0 0 30px rgba(251,191,36,.1);
+    }
+
+    .poster img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      padding: 1rem;
+    }
+
+    .info {
+      flex: 1;
+      min-width: 280px;
+    }
+
+    .title {
+      font-size: clamp(2rem, 5vw, 3rem);
+      font-weight: 900;
+      color: var(--amber);
+    }
+
+    .genre {
+      color: var(--muted);
+      margin-top: .25rem;
+    }
+
+    .plot {
+      margin-top: 1rem;
+      padding: 1rem;
+      border-left: 4px solid var(--amber);
+      background: rgba(41,37,36,.3);
+    }
+
+    .meta {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: .75rem;
+      margin-top: 1rem;
+    }
+
+    .meta div {
+      background: #292524cc;
+      padding: .75rem;
+      border-radius: .75rem;
+      border: 1px solid var(--border);
+    }
+
+    .player-wrapper {
+      width: 100%;
+      max-width: 960px;
+      margin: auto;
+      position: relative;
+      background: #000;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 0 40px rgba(0,0,0,0.9);
+    }
+
+    .top-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .channel-name {
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    .live-badge {
+      background: #e50914;
+      padding: 4px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      border-radius: 4px;
+    }
+
+    .loading {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: rgba(0,0,0,0.75);
+      font-size: 14px;
+      letter-spacing: 1px;
+      z-index: 5;
+    }
+
+    .hidden { display: none; }
+
+    video {
+      width: 100%;
+      height: auto;
+      background: #000;
+    }
+
+    .video-wrap {
+      margin-top: 2rem;
+      position: relative;
+      border-radius: 1.5rem;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    .controls {
+      display: flex;
+      justify-content: flex-end;
+      gap: .5rem;
+      padding: .75rem;
+      background: #000;
+    }
+
+    select {
+      background: #1c1917;
+      color: #fff;
+      border: 1px solid var(--border);
+      padding: .4rem .6rem;
+      border-radius: .5rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="https://giveth-station.vercel.app/tv" class="back">&larr;</a>
+
+    <div class="card">
+      <div class="poster">
+        <img src="./images/DisneyJunior.jpg" alt="Disney Channel">
+      </div>
+      <div class="info">
+        <div class="title">Disney Junior Channel</div>
+        <div class="genre">Kids • Family • Animation</div>
+        <div class="plot">
+          Disney Junior is a prominent television network owned by the Disney Entertainment division, specifically designed to engage preschoolers and children aged 2 to 7. Launched to replace the Playhouse Disney brand, the channel focuses on "storytelling that feels like a big hug," blending beloved classic characters like Mickey Mouse and Minnie Mouse with modern hits like Bluey, Doc McStuffins, and Spidey and His Amazing Friends. Its programming is carefully curated to balance entertainment with developmental learning, emphasizing social-emotional skills, creative problem-solving, and positive values such as kindness and teamwork.
+        </div>
+        <div class="meta">
+          <div><small>Quality</small><br><b>HD</b></div>
+          <div><small>Status</small><br><b style="color:#4ade80">LIVE</b></div>
+          <div><small>Network</small><br><b>Disney Junior</b></div>
+          <div><small>Language</small><br><b>English</b></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="player-wrapper">
+      <div class="top-bar">
+        <div class="channel-name">Disney Junior Channel</div>
+        <div class="live-badge">LIVE</div>
+      </div>
+      <div id="loading" class="loading">Starting stream…</div>
+      <video id="video" controls muted playsinline></video>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+<script>
+const video = document.getElementById('video');
+const loading = document.getElementById('loading');
+
+// Use relative paths so it works on both localhost and Render
+const STREAM_URL = '/hls/disneyJunior.m3u8';
+const START_URL  = '/api/disneyJunior/start';
+const PING_URL   = '/api/disneyJunior/ping';
+
+let hls = null;
+let lastVideoTime = 0;
+let stallCheckInterval = null;
+
+/* ==========================
+   START STREAM & PING LOGIC
+========================== */
+async function initBackend() {
+    try {
+        await fetch(START_URL);
+        // Ping immediately, then every 15s
+        sendPing();
+        setInterval(sendPing, 15000);
+    } catch (err) {
+        console.error("Failed to signal backend:", err);
+    }
+}
+
+function sendPing() {
+    fetch(PING_URL).catch(() => console.warn("Ping failed"));
+}
+
+/* ==========================
+   STALL DETECTOR
+   If video.currentTime doesn't change while playing, 
+   the HLS stream has likely hung.
+========================== */
+function startStallDetector() {
+    if (stallCheckInterval) clearInterval(stallCheckInterval);
+    
+    stallCheckInterval = setInterval(() => {
+        if (!video.paused && video.currentTime > 0) {
+            if (video.currentTime === lastVideoTime) {
+                console.warn("Detected stream stall. Recovering...");
+                recoverStream();
+            }
+            lastVideoTime = video.currentTime;
+        }
+    }, 5000); // Check every 5 seconds
+}
+
+function recoverStream() {
+    if (hls) {
+        hls.detachMedia();
+        hls.loadSource(STREAM_URL);
+        hls.attachMedia(video);
+    } else {
+        video.src = STREAM_URL;
+        video.load();
+    }
+}
+
+/* ==========================
+   HELPER TO WAIT FOR FILE
+========================== */
+async function waitForStream(url, timeout = 60000) {
+    const start = Date.now();
+    while (Date.now() - start < timeout) {
+        try {
+            const resp = await fetch(url, { method: 'HEAD' });
+            if (resp.ok) return true;
+        } catch (e) {}
+        await new Promise(r => setTimeout(r, 2000));
+    }
+    throw new Error('Stream timed out');
+}
+
+function hideLoading() {
+    loading.classList.add('hidden');
+}
+
+/* ==========================
+   MAIN PLAYER INITIALIZATION
+========================== */
+(async function initPlayer() {
+    await initBackend();
+
+    try {
+        await waitForStream(STREAM_URL);
+        hideLoading();
+
+        if (Hls.isSupported()) {
+            hls = new Hls({
+                liveSyncDuration: 6,      // Stay 6s behind live for stability
+                maxBufferLength: 20,      // Smaller buffer to prevent bloat
+                manifestLoadingMaxRetry: 10,
+                levelLoadingMaxRetry: 10
+            });
+
+            hls.loadSource(STREAM_URL);
+            hls.attachMedia(video);
+
+            hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                video.play().catch(e => console.log("Autoplay blocked, waiting for user interact"));
+                startStallDetector();
+            });
+
+            hls.on(Hls.Events.ERROR, (event, data) => {
+                if (data.fatal) {
+                    switch (data.type) {
+                        case Hls.ErrorTypes.NETWORK_ERROR:
+                            hls.startLoad();
+                            break;
+                        case Hls.ErrorTypes.MEDIA_ERROR:
+                            hls.recoverMediaError();
+                            break;
+                        default:
+                            initPlayer(); // Hard restart
+                            break;
+                    }
+                }
+            });
+
+        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+            // Safari / iOS Support
+            video.src = STREAM_URL;
+            video.addEventListener('loadedmetadata', () => {
+                hideLoading();
+                video.play();
+                startStallDetector();
+            });
+        }
+
+    } catch (err) {
+        loading.textContent = 'Stream error. Please refresh the page.';
+        console.error(err);
+    }
+})();
+</script>
+
+
+</body>
+</html>

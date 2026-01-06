@@ -8,6 +8,7 @@ const disneyRoute = require('./routes/disneyRuote');
 const disneyXDRoute = require('./routes/disneyXDRuote');
 const nickelodeonRoute = require('./routes/nickelodeonChannelRoute');
 const disneyJuniorRoute = require('./routes/disneyJuniorRuote');
+const nickJuniorRoute = require('./routes/nickJuniorRoute');
 const { monitorFiles } = require('./functions/files');
 
 const app = express();
@@ -36,6 +37,12 @@ app.use(
 app.use(
   '/hls',
   express.static(path.join(__dirname, 'disneyxd'))
+);
+
+// Test HLS static folder
+app.use(
+  '/hls',
+  express.static(path.join(__dirname, 'nickJunior'))
 );
 
 // Disney Junior HLS static folder
@@ -67,6 +74,10 @@ app.get('/nickelodeon', (req, res) => {
 
 app.get('/pokemontv', (req, res) => {
     res.sendFile(path.join(__dirname, 'pokemon.html'));
+});
+
+app.get('/nickJunior', (req, res) => {
+    res.sendFile(path.join(__dirname, 'nickJunior.html'));
 });
 
 app.get('/server', (req, res) => {
@@ -304,6 +315,9 @@ app.use('/api', nickelodeonRoute);
 
 // Disney Junior route
 app.use('/api', disneyJuniorRoute);
+
+// Nick Junior route
+app.use('/api', nickJuniorRoute);
 
 setInterval(monitorFiles, 30000); // Monitor files every 30 seconds
 

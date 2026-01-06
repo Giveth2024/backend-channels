@@ -11,9 +11,16 @@ const nickToons = path.join(__dirname, '..', 'nickToons'); // Path to the new fo
 
 // Helper function to scan and log folder contents
 function scanFolder(folderPath, folderName) {
+    // Check if folder exists
     if (!fs.existsSync(folderPath)) {
-        console.log(`⚠️  ${folderName} folder does not exist yet.`);
-        return;
+        console.log(`⚠️  ${folderName} folder does not exist. Creating it now...`);
+        
+        // Create the folder
+        fs.mkdirSync(folderPath, { recursive: true });
+        
+        console.log(`✅  ${folderName} created successfully.`);
+    } else {
+        console.log(`📂  ${folderName} already exists.`);
     }
 
     try {

@@ -51,6 +51,12 @@ app.use(
   express.static(path.join(__dirname, 'disneyJunior'))
 );
 
+// Nick Toons HLS static folder
+app.use(
+  '/hls',
+  express.static(path.join(__dirname, 'nickToons'))
+);
+
 //Pages
 app.get('/tomandjerry', (req, res) => {
     res.sendFile(path.join(__dirname, 'tomandjerry.html'));
@@ -78,6 +84,10 @@ app.get('/pokemontv', (req, res) => {
 
 app.get('/nickJunior', (req, res) => {
     res.sendFile(path.join(__dirname, 'nickJunior.html'));
+});
+
+app.get('/nickToons', (req, res) => {
+    res.sendFile(path.join(__dirname, 'nickToons.html'));
 });
 
 app.get('/server', (req, res) => {

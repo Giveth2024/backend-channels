@@ -7,6 +7,7 @@ const nickDir = path.join(__dirname, '..', 'Nickelodeon'); // Path to the new fo
 const disneyXD = path.join(__dirname, '..', 'disneyxd'); // Path to the new folder
 const disneyJunior = path.join(__dirname, '..', 'disneyJunior'); // Path to the new folder
 const nickJunior = path.join(__dirname, '..', 'nickJunior'); // Path to the new folder
+const nickToons = path.join(__dirname, '..', 'nickToons'); // Path to the new folder
 
 // Helper function to scan and log folder contents
 function scanFolder(folderPath, folderName) {
@@ -48,6 +49,9 @@ function monitorFiles() {
 
     // Check the Nick Junior folder
     scanFolder(nickJunior, 'Nick Junior');
+
+    // Check the Nick Toons folder
+    scanFolder(nickToons, 'Nick Toons');
 
     console.log('------------------------------------------');
 }

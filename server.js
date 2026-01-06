@@ -9,6 +9,7 @@ const disneyXDRoute = require('./routes/disneyXDRuote');
 const nickelodeonRoute = require('./routes/nickelodeonChannelRoute');
 const disneyJuniorRoute = require('./routes/disneyJuniorRuote');
 const nickJuniorRoute = require('./routes/nickJuniorRoute');
+const nickToonsRoute = require('./routes/nickToonsRoute');
 const { monitorFiles } = require('./functions/files');
 
 const app = express();
@@ -328,6 +329,9 @@ app.use('/api', disneyJuniorRoute);
 
 // Nick Junior route
 app.use('/api', nickJuniorRoute);
+
+// Nick Toons route
+app.use('/api', nickToonsRoute);
 
 setInterval(monitorFiles, 30000); // Monitor files every 30 seconds
 
